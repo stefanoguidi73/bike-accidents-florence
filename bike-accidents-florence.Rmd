@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-As a data analysis and visualization enthusiast, as well as a passionate urban cyclist and supportert of sustanible mobility, when I discovered that the Florence municipality OpenData office had released an open dataset about the road accidents that involved cyclists in my own town, I immediately decided to download it and to try to conduct some analyses for my first blog post on the use of R.In what follows I'll present the results of the analsyes along with the code I've writted to perform them. 
+As a data analysis and visualization enthusiast, as well as passionate urban cyclist and supporter of sustanible mobility, when I discovered that the Florence municipality OpenData office had released an open dataset about the road accidents that involved cyclists in my own town, I immediately decided to download it and to try to conduct some analyses for my first blog post on the use of R. In what follows I'll present the results of the analsyes along with the code I've writted to perform them. 
 
 #### Getting ready to start
 
@@ -39,7 +39,7 @@ library(timeDate)
 
 #### Downloading and importing the data  
 
-All the data used for the analyses can be freely downloaded from the Florence [Open Data](https://opendata.comune.fi.it) website, following the link  [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1). In the zipped folder that can be download from the previous link are contained the datasets relative to the accidents that happened in the following years: 2011, 2012, 2013, 2014 and 2015. Each dataset is in a different subfolder. It is also possible to download the each dataset separately, accessing the following [link](https://opendata.comune.fi.it/?q=metarepo/datasetinfo&id=sinistri-con-velocipedi) and then following the links to each year. For the analyses presented in this post I've followed the latter strategy, and downloaded each dataset (in shapefile format) separately, and unzipping the files in 5 different folders, before to import them in R. It's important to notice at this point that for 2001 the data do not include accidents that happened before April, while for 2015 the dataset only cover the first three months of the year (January, February and March). Overall, thus, the data cover a 4-year period.  
+All the data used for the analyses can be freely downloaded from the Florence [Open Data](https://opendata.comune.fi.it) website, at the following  [link](http://data.comune.fi.it/datastore/download.php?id=6743&type=1). In the zipped folder that can be download from the previous link are contained the datasets relative to the accidents that happened in the following years: 2011, 2012, 2013, 2014 and 2015. Each dataset is in a different subfolder. It is also possible to download the each dataset separately, accessing the following [link](https://opendata.comune.fi.it/?q=metarepo/datasetinfo&id=sinistri-con-velocipedi) and then following the links to each year. For the analyses presented in this post I've followed the latter strategy, and downloaded each dataset (in shapefile format) separately, and unzipping the files in 5 different folders, before to import them in R. It's important to notice at this point that for 2001 the data do not include accidents that happened before April, while for 2015 the dataset only cover the first three months of the year (January, February and March). Overall, thus, the data cover a 4-year period.  
 
 To import the data in R, I use the `readOGR` function from the package `rgdal`. The shapefiles are loaded into objects of class *SpatialPointDataFrame*.
 
@@ -422,9 +422,9 @@ incidenti@data %>%
 
 ```
 
-As the plot clearly shows, over 80% of the accidents happened during workdays, and the highest frequencies are recorded in the first part of the week, while the lowest number of accidents happened on Sundays. The rate of accidents during working days (1 per day) was twice the one during weekends (0.53 incidenti al giorno).[^2] It thus seems that most of the accidents are related to mobility related to work. To further explore this phenomenon we can make a heatmap of the frequency of accicend by day and hour.  
+As the plot clearly shows, over 80% of the accidents happened during workdays, and the highest frequencies are recorded in the first part of the week, while the lowest number of accidents happened on Sundays. The rate of accidents during working days (1 per day) was twice the one during weekends (0.53 incidenti al giorno). It thus seems that most of the accidents are related to mobility related to work. To further explore this phenomenon we can make a heatmap of the frequency of accicend by day and hour.  
 
-```{r fig.width=8, fig.height=2.5}
+```{r fig.width=8.5, fig.height=4}
 incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percentuale=n/sum(n)*100) %>% 
   ggplot(aes(factor(ora2), GIORNO)) +
   geom_tile(aes(fill = n), colour = "white") + 
@@ -436,6 +436,7 @@ incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percen
   ggtitle("Accidents frequency  by day and hour") +
   theme_minimal() +
   theme(
+    legend.position = "bottom",
     panel.grid = element_blank()) + 
   coord_equal()
 ```
@@ -444,7 +445,7 @@ In the heatmap above, in which the color of the tiles represent the absolute fre
 In the evening and after 9pm, the highest accident frequency is found on Fridays, while after midnight the frequency seems higher during the weekends (at night between Friday and Saturday, and between Saturday and Sunday). On Saturdays, finally, we find a peak of accidents in the morning, between 11 am and 1 pm.   
 To further explore these trends, we can make another heatmap, plotting the *relative frequencies* of the accidents at different times during each day, instead oif the absolute ones. This new plot confirms the trends already discussed but also reveals a new interesting pattern. On Sundays, there was relatively high number of accidents in the morning between 10 am and 12 am, consistently with the fact that many people take bike trips on Sundays. The new plot also shows more clearly the relative peak of accidents after midnight in the night between Saturday and Sunday. 
 
-```{r fig.width=8, fig.height=2.5}
+```{r fig.width=8.5, fig.height=4}
 incidenti@data %>% group_by(GIORNO, ora2) %>% 
   summarise(n=n()) %>% mutate(percentuale=n*100/sum(n)) %>% 
   ggplot(aes(factor(ora2), GIORNO)) +
@@ -457,6 +458,7 @@ incidenti@data %>% group_by(GIORNO, ora2) %>%
   ggtitle("Relative accidents frequency during the day across the week") +
   theme_minimal() +
   theme(
+    legend.position = "bottom",
     panel.grid = element_blank()) + 
   coord_equal()
 ```
@@ -504,14 +506,13 @@ incidenti@data %>% group_by(MESE2, GIORNO) %>% summarise(n=n()) %>%
   coord_equal()
 ```
 
-These last two plots do not reveal any particularly interesting pattern.  Nel mese di maggio, apparentemente, i sinistri tendono ad assere più frequenti il venerdì ed il sabato rispetto a quanto avvenga negli altri mesi, mentre ad agosto sembra esserci una minore differenza nella frequenza dei sinstri durante la settimana, presumibilmente perché in quel mese tipicamente mese di ferie, la mobilità ciclistica per recarsi al lavoro diminuisce. 
-
+These last two plots do not reveal any particularly interesting pattern. In May, apparently, accidents tend to me more frequent on Fridays and Saturdays than in the other months, while in August the distribution of the accidents frequency across the week seem more uniform, possibly because in the month, when many Florentines are out of town for vacation, there is simply less work-related bike mobility.   
 
 ## Closing remarks
 
-I hope this journey in the accidents involving cyclists in Florence has interested you. My  initial idea, as I said before, was only to make an interactive map of the accidents, but, as it often happens, I got hooked in the analyes and couldn't stop ...    
+I hope this journey in the accidents involving cyclists in Florence has interested you. My  initial idea, as I said before, was only to make an interactive map of the accidents, but, as it often happens, I got hooked in the analyes while I was doing them and couldn't stop until I'd explored many different aspects ...    
 
-Naturalmente ci sono molte altre analisi possibili di questi dati che sarebbe interessante realizzare. La distribuzione spaziale degli incidenti, innanzitutto, potrebbe essere esplorata più a fondo, cercando magari di confrontare il tasso di incidenti in diverse zone (ad esempio sulle piste ciclabili o nelle aree pedonali).  Attraverso analisi di regressione potremmo poi stimare il rischio relativo di incidenti in base ai riferimenti temporali (mese, giorno, ora).  Potremmo anche testare i pattern periodici attraverso i mesi che abbiamo notato, usando tecniche specifiche per le serie temporali, ed arricchire la visualizzazione della frequenza degli incidenti durante il periodo con serie storiche sulla temperatura o il livello di precipitazioni. Insomma, l'argomento è più che aperto. Magari riuscirò a fare alcune di queste  analisi per un secondo post sul blog. Ma fino ad allora, grazie per l'attenzione!  
+There are, off course, many further possible analyses that could be done on these data. The spatial distribution of the accidents, first of all, could be further explored in depth, for instance by comparing the rate of accidents in different areas (on or in proximity of bike lanes or in pedestrian areas). We could then try to model the relative risk of accident by temporal coordinates (hour of the day, type of day and month), and we could test the seasonality trends using specific time series analysis methods, also including data about weather conditions (temperature, rain levels). In other words, there's still plenty of analysis still waiting to be done. Hopefully, I'll find the time to perform some of them in the future and include them in new blog post.  Since then, however, thank you for your attention and I hope you had fun! 
 
 
 ***
@@ -521,4 +522,3 @@ Icons made by [Freepik](https://www.freepik.com/) and [Dave Gandy](https://www.f
 
 
 [^1]: A rate is a measure of the frequency of occurrence of an event in a period of time. 
-[^2]: Per avere una stima ancora migliore del tasso di sinistri nei giorni feriali vs in quelli festivi, dovremmo fare riferimento non solo alla distinzione tra giorni lavorativi (lun-ven) e weekend (sab-dom), ma considerare anche le festività nel calendario italiano, che possono (si spera) o meno coincidere con un giorno infrasettimanale. Questo comporta ricodificare alla luce del calendario il fatto che il giorno in cui è avvenuto l'incidente fosse o meno un giorno di festa, e calcolare un denominatore del totale delle giornate lavorative e festive sempre alla luce del calendario. 
