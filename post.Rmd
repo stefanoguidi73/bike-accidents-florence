@@ -39,7 +39,7 @@ library(timeDate)
 
 #### Scaricare ed importare i dati  
 
-I dati possono essere scaricati dal portale [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1). Nella cartella zippata scaricabile dal precedente link sono presenti i dataset relativi agli anni 2011, 2012, 2013, 2014 e 2015, in diverse sottocartelle. È possibile anche scaricare separatamente i dati dei diversi anni, in diversi formati, accedendo al seguente [link](https://opendata.comune.fi.it/?q=metarepo/datasetinfo&id=sinistri-con-velocipedi) e poi seguendo i link presenti per i diversi anni. Per le analisi presente in questo post ho seguito questa seconda strategia, scaricando per ogni anno i dati in formato shapefile, e scompattando le cartelle compresse in 5 cartelle diverse, per poi effettuare l'importazione in R dei dati.  È importante notare a questo punto che per il 2011, i dati coprono solo gli incidenti avvenuti dal mese di aprile in poi, mentre per il 2015 comprono solo i primi tre mesi dell'anno (fino a marzo, incluso). Nel complesso, quindi, i dati disponibili riguardano 4 interi anni. 
+I dati possono essere scaricati dal portale [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1). Nella cartella zippata scaricabile dal precedente link sono presenti i dataset relativi agli anni 2011, 2012, 2013, 2014 e 2015, in diverse sottocartelle. È possibile anche scaricare separatamente i dati dei diversi anni, in diversi formati, accedendo al seguente [link](https://opendata.comune.fi.it/?q=metarepo/datasetinfo&id=sinistri-con-velocipedi) e poi seguendo i link presenti per i diversi anni. Per le analisi presente in questo post ho seguito questa seconda strategia, scaricando separatamente per ogni anno i dati in formato shapefile, e scompattando le cartelle compresse in 5 cartelle diverse, per poi effettuare l'importazione in R dei dati.  È importante notare a questo punto che per il 2011, i dati coprono solo gli incidenti avvenuti dal mese di aprile in poi, mentre per il 2015 comprono solo i primi tre mesi dell'anno (fino a marzo, incluso). Nel complesso, quindi, i dati disponibili riguardano 4 interi anni. 
 
 ```{r results = 'hide'}
 # carico i dati dei 5 periodi
@@ -57,7 +57,7 @@ incidenti <- rbind(incidenti_2011, incidenti_2012, incidenti_2013, incidenti_201
 
 #### Preparare i dati
 
-Per poter plottare i dati ed effettuare le analisi, è necessario inizialmente lavorare un po' sul dataset, filtrando alcune colonne non interessanti, impostando il tipo di proiezione da usare per le mappe, e ricodificando alcune variabili. In particolare, i veicoli coinvolti nel sinistro sono codificati in due variabili TIPA_VA e TIPO_VB, ma dato che i sinistri coinvolgono sempre almeno un velocipede, decido di codificare in una singola variabile l'altro veicolo coinvolto.  Dato l'alto numero di livelli di questa nuova variabile, inoltre, opto per una ricodifca ulteriore che raggruppi alcune delle categorie originali. 
+Per poter plottare i dati ed effettuare le analisi, è necessario inizialmente lavorare un po' sul dataset, filtrando alcune colonne non interessanti, impostando il tipo di proiezione da usare per le mappe, e ricodificando alcune variabili. In particolare, i veicoli coinvolti nel sinistro sono codificati in due variabili TIPO_VA e TIPO_VB, ma dato che i sinistri coinvolgono sempre almeno un velocipede, decido di codificare in una singola variabile l'altro veicolo coinvolto.  Dato l'alto numero di livelli di questa nuova variabile, inoltre, opto per una ricodifca ulteriore che raggruppi alcune delle categorie originali. 
 
 ```{r results = 'hide' }
 # converto la proiezione per plottare gl incidenti in leaflet (WSG84)
@@ -537,7 +537,7 @@ incidenti@data %>% group_by(MESE2, GIORNO) %>% summarise(n=n()) %>%
   coord_equal()
 ```
 
-Nei grafici ...
+Nei grafici non emergono pattern particolarmente interessanti. Nel mese di maggio, apparentemente, i sinistri tendono ad assere più frequenti il venerdì ed il sabato rispetto a quanto avvenga negli altri mesi, mentre ad agosto sembra esserci una minore differenza nella frequenza dei sinstri durante la settimana, presumibilmente perché in quel mese tipicamente mese di ferie, la mobilità ciclistica per recarsi al lavoro diminuisce. 
 
 
 ### Conclusioni
