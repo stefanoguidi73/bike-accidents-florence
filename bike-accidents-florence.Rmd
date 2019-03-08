@@ -1,7 +1,7 @@
 ---
 title: "4 years of bike accidents in Florence"
 author: "Stefano Guidi"
-date: "16/2/2019"
+date: "8/3/2019"
 output: html_document
 
 ---
@@ -422,7 +422,7 @@ incidenti@data %>%
 
 ```
 
-As the plot clearly shows, over 80% of the accidents happened during workdays, and the highest frequencies are recorded in the first part of the week, while the lowest number of accidents happened on Sundays. The rate of accidents during working days (1 per day) was twice the one during weekends (0.53 incidenti al giorno). It thus seems that most of the accidents are related to mobility related to work. To further explore this phenomenon we can make a heatmap of the frequency of accicend by day and hour.  
+As the plot clearly shows, over 80% of the accidents happened during workdays, and the highest frequencies are recorded in the first part of the week, while the lowest number of accidents happened on Sundays. The rate of accidents during working days (1 per day) was twice the one during weekends (0.53 incidenti al giorno). It thus seems that most of the accidents are related to mobility related to work. To further explore this phenomenon we can make a heatmap of the frequency of accidents by day and hour of the day.  
 
 ```{r fig.width=8.5, fig.height=4}
 incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percentuale=n/sum(n)*100) %>% 
@@ -433,7 +433,7 @@ incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percen
   ylab("") +
   xlab("") +
   labs(fill = "Frequency\n(n. of accidents)") +
-  ggtitle("Accidents frequency  by day and hour") +
+  ggtitle("Accidents frequency by day and hour") +
   theme_minimal() +
   theme(
     legend.position = "bottom",
@@ -443,7 +443,7 @@ incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percen
 
 In the heatmap above, in which the color of the tiles represent the absolute frequency of accident in each hour and day of the week (e.g. in the first tile in the top left of the plot is reported the nuymber of accidents that happened on Sunday between midnight and 01 am), some clear patterns emerge. First of all, during working days, accidents mostly happened either between 7 and 12 am, with peask between 9 and 10 and between 11 and 12, or between 3pm and 8 pm. It is also interesting to notice that on mondays the frequency of accidents between 6 and 8 pm seems higher than usual, possibily because at the beginning of the work week people could stay longer in the office.  
 In the evening and after 9pm, the highest accident frequency is found on Fridays, while after midnight the frequency seems higher during the weekends (at night between Friday and Saturday, and between Saturday and Sunday). On Saturdays, finally, we find a peak of accidents in the morning, between 11 am and 1 pm.   
-To further explore these trends, we can make another heatmap, plotting the *relative frequencies* of the accidents at different times during each day, instead oif the absolute ones. This new plot confirms the trends already discussed but also reveals a new interesting pattern. On Sundays, there was relatively high number of accidents in the morning between 10 am and 12 am, consistently with the fact that many people take bike trips on Sundays. The new plot also shows more clearly the relative peak of accidents after midnight in the night between Saturday and Sunday. 
+To further explore these trends, we can make another heatmap, plotting the *relative frequencies* of the accidents at different times during each day, instead of the absolute ones. This new plot confirms the trends already discussed but also reveals a new interesting pattern. On Sundays, there was relatively high number of accidents in the morning between 10 am and 12 am, consistently with the fact that many people take bike trips on Sundays. The new plot also shows more clearly the relative peak of accidents after midnight in the night between Saturday and Sunday. 
 
 ```{r fig.width=8.5, fig.height=4}
 incidenti@data %>% group_by(GIORNO, ora2) %>% 
@@ -454,7 +454,7 @@ incidenti@data %>% group_by(GIORNO, ora2) %>%
   geom_text(aes(label = str_c(round(percentuale, digits = 1), "%")), size = 2) + 
   ylab("") +
   xlab("") +
-  labs(fill = "Percent of accidents\nwithin day") +
+  labs(fill = "Percent of accidents within day") +
   ggtitle("Relative accidents frequency during the day across the week") +
   theme_minimal() +
   theme(
@@ -508,11 +508,30 @@ incidenti@data %>% group_by(MESE2, GIORNO) %>% summarise(n=n()) %>%
 
 These last two plots do not reveal any particularly interesting pattern. In May, apparently, accidents tend to me more frequent on Fridays and Saturdays than in the other months, while in August the distribution of the accidents frequency across the week seem more uniform, possibly because in the month, when many Florentines are out of town for vacation, there is simply less work-related bike mobility.   
 
-## Closing remarks
+## Conclusions
 
+To sum-up, the main results of these analyses of the accidents that involved cyclists in Florence are the following ones:   
+
+* in the 4 years covered by the data, there was an accident involving a cyclist almost every day    
+
+* more than half of the accidents involved a car  
+
+* 80% of the accidents happened during working days, when the rate of accidents was twice the one recorded during weekends (1 accident per day vs 1 every two days)  
+
+* many accidents happenened in proximity of or on bike lanes  
+
+* there is no evidence that the number of accidents is decreasing, but rather the last 3 years show a raising trend   
+
+* accidents tend to be more frequent in spring (especially in May), summer (especially in June) and early autumnm (especilly in October), and less frequent in winter  
+
+* during the day, accidents are more frequent during in the first part of the working weeek, while at night they are more frequent during weekends  
+
+* in the weekends, an particularly on Sundays, there is a relative peak of accidents in the morning, most likely connected to a recreational/touring use of the bicycle.
+
+### Closing remarks
 I hope this journey in the accidents involving cyclists in Florence has interested you. My  initial idea, as I said before, was only to make an interactive map of the accidents, but, as it often happens, I got hooked in the analyes while I was doing them and couldn't stop until I'd explored many different aspects ...    
 
-There are, off course, many further possible analyses that could be done on these data. The spatial distribution of the accidents, first of all, could be further explored in depth, for instance by comparing the rate of accidents in different areas (on or in proximity of bike lanes or in pedestrian areas). We could then try to model the relative risk of accident by temporal coordinates (hour of the day, type of day and month), and we could test the seasonality trends using specific time series analysis methods, also including data about weather conditions (temperature, rain levels). In other words, there's still plenty of analysis still waiting to be done. Hopefully, I'll find the time to perform some of them in the future and include them in new blog post.  Since then, however, thank you for your attention and I hope you had fun! 
+There are, off course, many further possible analyses that could be done on these data. The spatial distribution of the accidents, first of all, could be further explored in depth, for instance by comparing the rate of accidents in different areas (on or in proximity of bike lanes or in pedestrian areas). We could then try to model the relative risk of accident by temporal coordinates (hour of the day, type of day and month), and we could test the seasonality trends using specific time series analysis methods, also including data about weather conditions (temperature, rain levels). In other words, there's still plenty of analysis still waiting to be done. Hopefully, I'll find the time to perform some of them in the future and include them in a new blog post.  In the meantime, however, thank you for your attention and I hope you had fun! 
 
 
 ***
@@ -521,4 +540,4 @@ There are, off course, many further possible analyses that could be done on thes
 Icons made by [Freepik](https://www.freepik.com/) and [Dave Gandy](https://www.flaticon.com/authors/dave-gandy), from [www.flaticon.com](https://www.flaticon.com) are licensed by [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/).  Bike accidents data were provided by Florence [Open Data](https://opendata.comune.fi.it) and are also licensed by [CC 3.0 BY](http://creativecommons.org/licenses/by/3.0/). 
 
 
-[^1]: A rate is a measure of the frequency of occurrence of an event in a period of time. 
+[^1]: The rate is a measure of the frequency of occurrence of an event in a period of time. 
