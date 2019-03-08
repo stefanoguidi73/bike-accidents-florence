@@ -381,6 +381,31 @@ mappa %>%
     options = layersControlOptions(collapsed = TRUE),
     position = "topleft"
   ) 
+
+# import aree pedonali------
+aree_pedonali <- readOGR("areepedonali/", layer="areepedonaliPolygon")
+latlong = "+init=EPSG:4326" # AKA: WSG84 
+aree_pedonali <-spTransform(aree_pedonali, CRS(latlong))
+View(aree_pedonali@data)
+
+# new map with aree pedonali
+leaflet(incidenti) %>% 
+  setView(lng = 11.25, lat = 43.783333, zoom = 14) %>% 
+  addProviderTiles(providers$Esri.WorldStreetMap) %>% 
+  addPolylines(data = ciclabili, color="darkgreen", group="Piste ciclabili") %>% 
+  addPolygons(data = aree_pedonali, group = "aree pedonali", color = "red", stroke = FALSE) %>% 
+  addCircleMarkers(data=incidenti,
+                   popup=~make_labels(incidenti@data), 
+                   group="incidenti", radius=2) %>% 
+  addHeatmap(blur = 20, max = 0.05, 
+             radius = 15, 
+             group = "Densità") %>% 
+  addLayersControl(
+    overlayGroups = c("incidenti", "Densità", "Piste ciclabili", "aree pedonali"),
+    options = layersControlOptions(collapsed = TRUE),
+    position = "topleft"
+  ) 
+
 # http://www.sir.toscana.it/index.php?IDS=2&IDSS=6
 # prove bandwidth: this is the one used by ggplot 2d density
 MASS::bandwidth.nrd(X[,1]) # 0.02836317  way larger than the one used in the leaflet map
