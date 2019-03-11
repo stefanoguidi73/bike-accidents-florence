@@ -15,6 +15,8 @@ library(anytime)
 library(lubridate)
 library(hexbin)
 library(leaflet.extras)
+library(dygraphs)
+library(xts)
 
 # import data
 paste0("incidenti_sap",2011:2015)
@@ -77,6 +79,11 @@ incidenti@data$altro_veicolo_movement <- recode(incidenti@data$altri_veicoli,
                                                 .default = "In movimento")
 sjt.frq(factor(incidenti@data$altro_veicolo_movement))
 
+# crosstab
+incidenti@data %>% 
+  select(altro_veicolo_recoded, altro_veicolo_movement) %>% 
+  sjtab(fun = "xtab", show.row.prc = TRUE, show.col.prc = TRUE, var.labels = c("Tipo veicolo", "Movimento"))
+
 # convert data in proper date format in a new variable
 incidenti@data$data_ok <- date(incidenti@data$DATA)
 min(incidenti@data$data_ok) # 2 aprile 2011.  i dati partono dall'aprile 2011
@@ -130,7 +137,23 @@ incidenti@data %>%
             colour = "black", size = 1.5) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+# prova dygraph
+time <- as.POSIXct(paste(df$date, df$extime), format = "%Y-%m-%d %H:%M:%OS")
+incidenti_date <- data.frame(data = date(incidenti@data$DATA))
+incidenti_date <- data.frame(data = incidenti@data$DATA)
+incidenti_date <- incidenti_date %>% group_by(data) %>% summarise(n = n())
+glimpse(incidenti_date)
+incidenti_date$data <- as.POSIXct(incidenti_date$data )
+prova_serie <- xts::xts(x = incidenti_date$n, order.by = incidenti_date$data)
 
+dygraph(prova_serie)
+ep1 <- endpoints(prova_serie, on="months")
+dygraph(period.apply(prova_serie, INDEX=ep1, FUN=sum))
+do.call(rbind,  lapply(split(prova_serie,"months"),  sum)) 
+lungDeaths <- cbind(mdeaths, fdeaths)
+class(lungDeaths)
+str(lungDeaths)
+glimpse(lungDeaths)
 
 # fare plot di incidenti nei mesi per tutto il periodo
 ggplot(incidenti@data %>% group_by(anno2, MESE2) %>% summarise(n=n()), 
@@ -393,7 +416,8 @@ leaflet(incidenti) %>%
   setView(lng = 11.25, lat = 43.783333, zoom = 14) %>% 
   addProviderTiles(providers$Esri.WorldStreetMap) %>% 
   addPolylines(data = ciclabili, color="darkgreen", group="Piste ciclabili") %>% 
-  addPolygons(data = aree_pedonali, group = "aree pedonali", color = "red", stroke = FALSE) %>% 
+  addPolygons(data = aree_pedonali, group = "aree pedonali", 
+              color = "red", stroke = FALSE, opacity = 0.8) %>% 
   addCircleMarkers(data=incidenti,
                    popup=~make_labels(incidenti@data), 
                    group="incidenti", radius=2) %>% 
