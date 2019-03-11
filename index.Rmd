@@ -2,7 +2,7 @@
 title: "4 anni di incidenti in bici a Firenze"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
+    orientation: rows
     vertical_layout: fill
 
 ---
@@ -23,6 +23,8 @@ library(lubridate)
 library(leaflet.extras)
 library(timeDate)
 library(flexdashboard)
+library(dygraphs)
+library(xts)
 
 # Load data
 incidenti_2011 <- readOGR("incidenti_sap2011/", layer="incidenti_sap_2011")
@@ -173,6 +175,16 @@ frequenze_giorni_tipo <- incidenti@data %>%
   bind_cols(denominatore = c(n_weekend, n_infrasettimanali)) %>% 
   mutate(tasso = n/denominatore, lower_ci_tasso = tasso - 1.96*sqrt(n)/denominatore, upper_ci_tasso = tasso + 1.96*sqrt(n)/denominatore)
 
+# serie per dygraph
+incidenti_date <- data.frame(data = incidenti@data$DATA) %>% 
+  group_by(data) %>% 
+  summarise(n = n())
+# glimpse(incidenti_date)
+incidenti_date$data <- as.POSIXct(incidenti_date$data )
+serie_incidenti <- xts::xts(x = incidenti_date$n, order.by = incidenti_date$data)
+
+ep1 <- endpoints(serie_incidenti, on="months")
+
 ```
 
 Sidebar {.sidebar}
@@ -182,13 +194,13 @@ Sidebar {.sidebar}
 
 I ciclisti, insieme ai pedoni, sono gli utenti più vulnerabili della strada.  Per comprendere meglio i rischi a cui vanno incontro muovendosi in città, ho realizzato questo sito che permette di esplorare i dati dei sinistri che hanno coinvolto almeno un ciclista avvenuti a Firenze tra il 1 Aprile 2011 e il 31 Marzo 2015.  
 
-I dati utilizzati sono quelli messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1).
+I dati dei sinistri sono quelli messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1). I dati meteo sono stati scaricati dal sito del [Servizio Idrogeologico della Regione Toscana](http://www.sir.toscana.it) ai seguenti indirizzi: [precipitazioni](http://www.sir.toscana.it/archivio/download.php?IDST=pluvio&IDS=TOS01001095), [temperature](http://www.sir.toscana.it/archivio/download.php?IDST=termo_csv&IDS=TOS11000111).
 
 Le diverse sezioni del sito permettono di analizzare aspetti come il trend nel numero dei sinistri negli anni, la distribuzione spaziale degli incidenti, e le variazioni nel numero e nel in base alla giorno e/o all'ora.  Per accedere alle diverse sezioni cliccate sulle voci della barra di navigazione in alto.  
 
 Se trovi utile ed interessante questo sito, ricordati di condividerlo sui tuoi canali social usando i link a destra nella barra di navigazione.
 
-Introduzione {data-orientation=rows}
+Introduzione 
 ===================================== 
 
 Row {data-height=180}
@@ -280,7 +292,7 @@ In **oltre il 50% degli incidenti** era coinvolta un'**autovettura**. Le auto ri
 
 Dopo un calo abbastanza deciso del numero di incidenti tra il primo ed il secondo periodo, i sinistri con ciclisti sono graduatamente aumentati, indipendentemente dal tipo di veicoli coinvolti.
 
-Dove
+Dove {data-orientation=columns}
 ===================================== 
 
 Column
@@ -305,7 +317,7 @@ leaflet(incidenti) %>%
 
 
 
-Quando {data-orientation=rows}
+Durante la settimana {data-navmenu="Quando"}
 ===================================== 
 
 Row {data-height=600}
@@ -365,7 +377,59 @@ incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percen
 ```   
 
 
-Durante l'anno 
+Durante l'anno {data-navmenu="Quando"}
 ===================================== 
 
-testo di prova
+Row {data-height=600}
+-------------------------------------
+
+### Frequenza dei sinistri per mese {data-width=600}
+
+```{r}
+incidenti@data %>% 
+  group_by(MESE2) %>% 
+  summarise(n=n()) %>% 
+  mutate(percentuale = n*100/sum(n)) %>% 
+  ggplot(aes(x=MESE2, y=n, group=1)) +
+  geom_line(stat = "identity", colour = "blue", size = 1.5) +
+  geom_text(aes(label = str_c(n, "\n(", round(percentuale, digits = 1), "%)", sep = "")), nudge_y = 8, size = 3) +
+  ylab("Frequenza (n. incidenti)") +
+  xlab("") + 
+  ggtitle("Frequenza dei sinistri nei mesi dell'anno") +
+  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))
+```
+
+### Commenti {data-width=400, .no-title}
+
+Il mese in cui si rileva la più bassa frequenza di sinistri è febbraio, mentre il maggior numero di incidenti si osserva a ottobre. In generale, si osserva che i sinistri diminuiscono nei mesi invernali per poi aumentare in primavera ed estate, benché, come già detto, il picco si registri in autunno. Inoltre, una bassa frequenza di sinistri si rileva anche ad agosto ed a luglio, probabilmente perché in questi mesi molti cittadini lasciano la città per andare in ferie.  
+
+Per verificare ulteriormente questi trend ciclici, è utile fare un ulteriore panel di grafici della frequenza mensile dei sinistri per i 4 periodi coperti dai dati. Il risultato mostra chiaramente che la generizzabilità del pattern attraverso i periodi, per quanto in un caso ( 2012-2013), la differenza tra i valori nei mesi più caldi e quelli invernali risulti più attenuata.
+
+Row {data-height=400}
+-------------------------------------
+
+### per anno e periodo {.no-title}
+
+```{r }
+
+dygraph(period.apply(serie_incidenti, INDEX=ep1, FUN=sum), ylab = "N. incidenti") %>% 
+  dySeries(label = "Incidenti", 
+           color = "blue",
+           drawPoints = TRUE,
+           pointSize = 2,
+           strokeWidth = 1.5)
+
+# fig.width=8.5, fig.height=3
+# incidenti@data %>% 
+#   group_by(periodo, MESE2) %>% 
+#   summarise(n=n()) %>% 
+#   mutate(percentuale = n*100/sum(n)) %>% 
+#   ggplot(aes(x=MESE2, y=n, group=1)) +
+#   geom_line(stat = "identity", colour = "blue", size = 1.5) +
+#   geom_text(aes(label = n), nudge_y = 8, size = 3) +
+#   facet_wrap(~periodo, ncol = 4) + 
+#   ylab("Frequenza (n. incidenti)") +
+#   xlab("") + 
+#   ggtitle("Frequenza dei sinistri nei mesi dell'anno") +
+#   theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))
+```
