@@ -17,6 +17,7 @@ library(hexbin)
 library(leaflet.extras)
 library(dygraphs)
 library(xts)
+library(crosstalk)
 
 # import data
 paste0("incidenti_sap",2011:2015)
@@ -31,6 +32,7 @@ incidenti_2014 <- readOGR("incidenti_sap2014/", layer="incidenti_sap_2014")
 incidenti_2015 <- readOGR("incidenti_sap2015/", layer="incidenti_sap_2015")
 
 incidenti <- rbind(incidenti_2011, incidenti_2012, incidenti_2013, incidenti_2014, incidenti_2015)
+glimpse(incidenti) 
 
 # convert to projection for plotting points with leaflet (WSG84)
 latlong = "+init=EPSG:4326" # AKA: WSG84 
@@ -140,20 +142,165 @@ incidenti@data %>%
 # prova dygraph
 time <- as.POSIXct(paste(df$date, df$extime), format = "%Y-%m-%d %H:%M:%OS")
 incidenti_date <- data.frame(data = date(incidenti@data$DATA))
+str(as.Date(incidenti@data$DATA))
+
 incidenti_date <- data.frame(data = incidenti@data$DATA)
 incidenti_date <- incidenti_date %>% group_by(data) %>% summarise(n = n())
 glimpse(incidenti_date)
-incidenti_date$data <- as.POSIXct(incidenti_date$data )
-prova_serie <- xts::xts(x = incidenti_date$n, order.by = incidenti_date$data)
+incidenti_date$data <- as.Date(incidenti_date$data )
+prova_serie <- xts(x = incidenti_date$n, order.by = incidenti_date$data)
+names(prova_serie) <- "incidenti"
+glimpse(prova_serie)
 
 dygraph(prova_serie)
 ep1 <- endpoints(prova_serie, on="months")
-dygraph(period.apply(prova_serie, INDEX=ep1, FUN=sum))
-do.call(rbind,  lapply(split(prova_serie,"months"),  sum)) 
-lungDeaths <- cbind(mdeaths, fdeaths)
-class(lungDeaths)
-str(lungDeaths)
-glimpse(lungDeaths)
+dygraph(period.apply(prova_serie, INDEX=ep1, FUN=sum), ylab = "N. incidenti") %>% 
+  #dyOptions(labelsUTC = FALSE) %>% 
+  dySeries(label = "Incidenti", 
+           color = "blue",
+           drawPoints = TRUE,
+           pointSize = 2,
+           strokeWidth = 1.5) 
+
+# carico dati meteo
+# precipitazioni <- read_csv2("meteo/prec_TOS01001095.csv", skip = 17)
+precipitazioni <- read_delim("meteo/prec_TOS01001095.csv", 
+                             skip = 365,
+                             delim = ";",
+                             locale = locale(decimal_mark = ",",
+                                             date_format = "%d/%m/%Y"),
+                             col_names = c("giorno", "mm", "tipo"),
+                             col_types = cols(giorno = "D",
+                                              mm = "d",
+                                              tipo = "c")
+                             )
+glimpse(precipitazioni)
+precipitazioni_ts <- xts(precipitazioni[,2], order.by = precipitazioni$giorno)
+glimpse(precipitazioni_ts)
+head(precipitazioni_ts)
+precipitazioni_ts_periodo <- precipitazioni_ts['2011-04-01/2015-03-31']
+
+temperature <- read_delim("meteo/temp_TOS11000111.csv", 
+                         skip = 19, 
+                         delim = ";",
+                         locale = locale(decimal_mark = ".",
+                                         date_format = "%d/%m/%Y"),
+                         col_names = c("giorno", "max", "min"),
+                         col_types = cols(giorno = "D",
+                                          min = "d",
+                                          max = "d")
+                         )
+glimpse(temperature)
+temperature <- temperature %>% mutate(media = (min + max)/2)
+temperature_ts <- xts(temperature[,-1], order.by = temperature$giorno)
+glimpse(temperature_ts)
+temperatire_ts_periodo <- temperature_ts['2011-04-01/2015-03-31']
+
+dati_meteo <- cbind(precipitazioni_ts_periodo, temperatire_ts_periodo)
+glimpse(dati_meteo)
+head(dati_meteo)
+
+# plots di base giornalieri
+dygraph(dati_meteo) %>% 
+  dyAxis("y", label = "Temperatura (C)") %>%
+  dyAxis("y2", label = "Precipitazioni (mm)", independentTicks = TRUE) %>%
+  dySeries("mm", axis = 'y2')
+
+# 
+dygraph(dati_meteo) %>% 
+  dyAxis("y", label = "Temperatura (C)") %>%
+  dyAxis("y2", label = "Precipitazioni (mm)", independentTicks = TRUE) %>%
+  dySeries(c("min", "media", "max"), label = "Temperatura media (C)", color = "red") %>% 
+  dySeries("mm", label = "Precipitazioni (mm)", axis = 'y2', color = "blue") %>% 
+  dyLegend(width = 500) %>% 
+  dyRangeSelector()
+
+
+# aggregando
+dati_meteo_mensili <- cbind(
+  apply.monthly(dati_meteo[,1], FUN=sum),
+  apply.monthly(dati_meteo[,-1], FUN=mean)
+)
+dati_meteo_mensili$cm <- dati_meteo_mensili$mm/10
+
+head(dati_meteo_mensili)
+
+dygraph(dati_meteo_mensili[,-5]) %>% 
+  dyAxis("y", label = "Temperatura media (C)") %>%
+  dyAxis("y2", label = "Precipitazioni cumulative (cm)", independentTicks = TRUE) %>%
+  dySeries("mm", axis = 'y2', fillGraph = TRUE)
+
+# unisco i dati di sinistri ed incidenti per unico plot
+head(prova_serie)
+
+incidenti_ts <- merge.xts(
+  dati_meteo,
+  prova_serie
+)
+head(incidenti_ts) 
+
+# aggrego per mese
+incidenti_ts_mesili <- cbind(
+  apply.monthly(incidenti_ts[, 1], FUN=sum),
+  apply.monthly(incidenti_ts[, 2:4], FUN=mean),
+  apply.monthly(incidenti_ts[, 5], FUN=function(x) sum(x, na.rm = TRUE))
+)
+head(incidenti_ts_mesili)
+
+dygraph(incidenti_ts_mesili[, c(1, 5)]) %>% 
+  dyAxis("y", label = "N. incidenti") %>%
+  dyAxis("y2", label = "Precipitazioni cumulative (mm)", independentTicks = TRUE) %>%
+  dySeries("incidenti",
+           label = "Incidenti", 
+           color = "blue",
+           drawPoints = TRUE,
+           pointSize = 2,
+           strokeWidth = 1.5) %>% 
+  dySeries("mm", axis = 'y2', fillGraph = TRUE)
+
+dygraph(incidenti_ts_mesili[, 4:5]) %>% 
+  dyAxis("y", label = "N. incidenti") %>%
+  dyAxis("y2", label = "Temperatura media (C)", independentTicks = TRUE) %>%
+  dySeries("incidenti",
+           label = "Incidenti", 
+           color = "blue",
+           drawPoints = TRUE,
+           pointSize = 2,
+           strokeWidth = 1.5) %>% 
+  dySeries("media", label = "Temperatura", axis = 'y2', fillGraph = TRUE)
+
+# aggregando per settimana 
+incidenti_ts_settimanali <- cbind(
+  apply.weekly(incidenti_ts[, 1], FUN=sum),
+  apply.weekly(incidenti_ts[, 2:4], FUN=mean),
+  apply.weekly(incidenti_ts[, 5], FUN=function(x) sum(x, na.rm = TRUE))
+)
+head(incidenti_ts_settimanali)
+
+dygraph(incidenti_ts_settimanali[, c(1, 5)]) %>% 
+  dyAxis("y", label = "N. incidenti") %>%
+  dyAxis("y2", label = "Precipitazioni cumulative (mm)", independentTicks = TRUE) %>%
+  dySeries("incidenti",
+           label = "Incidenti", 
+           color = "blue",
+           drawPoints = TRUE,
+           pointSize = 2,
+           strokeWidth = 1.5) %>% 
+  dySeries("mm", label = "Precipitazioni (mm)", axis = 'y2', fillGraph = TRUE) %>% 
+  dyRangeSelector()
+
+dygraph(incidenti_ts_settimanali[, 4:5]) %>% 
+  dyAxis("y", label = "N. incidenti") %>%
+  dyAxis("y2", label = "Temperatura media (C)", independentTicks = TRUE) %>%
+  dySeries("incidenti",
+           label = "Incidenti", 
+           color = "blue",
+           drawPoints = TRUE,
+           pointSize = 2,
+           strokeWidth = 1.5) %>% 
+  dySeries("media", label = "Temperatura (C)", axis = 'y2', fillGraph = TRUE) %>% 
+  dyRangeSelector()
+
 
 # fare plot di incidenti nei mesi per tutto il periodo
 ggplot(incidenti@data %>% group_by(anno2, MESE2) %>% summarise(n=n()), 
@@ -405,7 +552,7 @@ mappa %>%
     position = "topleft"
   ) 
 
-# import aree pedonali------
+# import and add aree pedonali------
 aree_pedonali <- readOGR("areepedonali/", layer="areepedonaliPolygon")
 latlong = "+init=EPSG:4326" # AKA: WSG84 
 aree_pedonali <-spTransform(aree_pedonali, CRS(latlong))
@@ -430,7 +577,34 @@ leaflet(incidenti) %>%
     position = "topleft"
   ) 
 
-# http://www.sir.toscana.it/index.php?IDS=2&IDSS=6
+# with cross talk filter
+incidenti_df <- cbind(incidenti@data,incidenti@coords)
+names(incidenti_df)[21:22] <- c("lon","lat")
+shared_incidenti <- SharedData$new(incidenti_df)
+str(shared_incidenti)
+
+bscols(widths = c(10, 2),
+       leaflet(shared_incidenti, height = 800) %>% 
+         setView(lng = 11.25, lat = 43.783333, zoom = 14) %>% 
+         addProviderTiles(providers$Esri.WorldStreetMap) %>% 
+         addPolylines(data = ciclabili, color="darkgreen", group="Piste ciclabili") %>% 
+         addPolygons(data = aree_pedonali, group = "aree pedonali", 
+                     color = "red", stroke = FALSE, opacity = 0.8) %>% 
+         addCircleMarkers(data=shared_incidenti,
+                          popup=~make_labels(shared_incidenti), 
+                          group="incidenti", radius=2) %>% 
+         addHeatmap(blur = 20, max = 0.05, 
+                    radius = 15, 
+                    group = "Densità") %>% 
+         addLayersControl(
+           overlayGroups = c("incidenti", "Densità", "Piste ciclabili", "aree pedonali"),
+           options = layersControlOptions(collapsed = TRUE),
+           position = "topleft"
+         ),
+       filter_checkbox("tipo", "Veicolo coinvolto", shared_incidenti, ~altro_veicolo_recoded, inline = FALSE)
+       )
+
+# altre prove heatmap leaflet -----
 # prove bandwidth: this is the one used by ggplot 2d density
 MASS::bandwidth.nrd(X[,1]) # 0.02836317  way larger than the one used in the leaflet map
 
@@ -443,7 +617,7 @@ myMap <- get_googlemap(center=c(lon = 11.25581, lat = 43.7695), zoom=13, maptype
 #myMap <- get_openstreetmap(incidenti@bbox, urlonly = TRUE)
 
 incidenti_df <- cbind(incidenti@data,incidenti@coords)
-names(incidenti_df)[15:16] <- c("lon","lat")
+names(incidenti_df)[21:22] <- c("lon","lat")
 ggmap(myMap)
 
 glimpse(incidenti_df)
