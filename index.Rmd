@@ -1,0 +1,371 @@
+---
+title: "4 anni di incidenti in bici a Firenze"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+
+---
+
+```{r setup, include=FALSE}
+# Load packages
+library(tidyverse)
+library("rgdal")
+library("rgeos")
+library(leaflet)
+library(htmltools)
+library(colorspace)
+library(RColorBrewer)
+library(scales)
+library(ggmap)
+library(anytime)
+library(lubridate)
+library(leaflet.extras)
+library(timeDate)
+library(flexdashboard)
+
+# Load data
+incidenti_2011 <- readOGR("incidenti_sap2011/", layer="incidenti_sap_2011")
+incidenti_2012 <- readOGR("incidenti_sap2012/", layer="incidenti_sap_2012")
+incidenti_2013 <- readOGR("incidenti_sap2013/", layer="incidenti_sap_2013")
+incidenti_2014 <- readOGR("incidenti_sap2014/", layer="incidenti_sap_2014")
+incidenti_2015 <- readOGR("incidenti_sap2015/", layer="incidenti_sap_2015")
+
+# merge data from different years
+incidenti <- rbind(incidenti_2011, incidenti_2012, incidenti_2013, incidenti_2014, incidenti_2015)
+
+# convert to projection for plotting points with leaflet (WSG84)
+latlong = "+init=EPSG:4326" # AKA: WSG84 
+incidenti <-spTransform(incidenti, CRS(latlong))
+
+# remove duoplicated variables and add a new one for involved vehicles
+incidenti@data <- incidenti@data[,c(1:5,9,11:15)]
+#glimpse(incidenti@data)
+
+# codifico in una nuova variabile il secondo veicolo coinvolto nel sinistro, oltre alla bici 
+incidenti@data$altri_veicoli <- ifelse(incidenti@data$TIPO_VA=="VELOCIPEDE",
+                               ifelse(is.na(as.character(incidenti@data$TIPO_VB)),
+                                      "Nessuno",
+                                      as.character(incidenti@data$TIPO_VB)),
+                               as.character(incidenti@data$TIPO_VA))
+
+# verifico i livelli di questa variabile
+# sjt.frq(factor(incidenti@data$altri_veicoli))
+
+# riduco il numero di categorie, creando una nuova variabile
+incidenti@data$altro_veicolo_recoded <- recode(incidenti@data$altri_veicoli, 
+                                               `AUTO IN SOSTA` = "Autovettura",
+                                               `AUTOVETTURA PRIVATA` = "Autovettura",
+                                               `AUTOVETTURA PRIVATA CON RIMORCHIO` = "Autovettura",
+                                               `AUTOVETTURA PUBBLICA` = "Autovettura",
+                                               `AUTOBUS DI LINEA O NON IN EXTRAURBANA` = "Autobus",
+                                               `AUTOBUS O FILOBUS IN SERVIZIO URBANO` = "Autobus",
+                                               `TRAM` = "Autobus",
+                                               `AUTOCARRO` = "Autocarro",
+                                               `AUTOSNODATO O AUTOARTICOLATO` = "Autocarro",
+                                               `AUTOTRENO CON RIMORCHIO` =  "Autocarro",
+                                               `CICLOMOTORE` = "Ciclomotore",
+                                               `MOTOCICLO A SOLO` = "Motociclo",
+                                               `MOTOCICLO CON PASSEGGERO` = "Motociclo",
+                                               `MOTOCICLO IN SOSTA` = "Motociclo",
+                                               `VELOCIPEDE` = "Bicicletta",
+                                               `IGNOTO` = "Ignoto",
+                                               `Nessuno` = "Nessuno",
+                                               .default = "Altro")
+
+# ricontrollo la frequenza
+# sjt.frq(factor(incidenti@data$altro_veicolo_recoded)) 
+
+# aggiungo una ulteriore variabile con informazioni sul sinistro
+incidenti@data$altro_veicolo_movement <- recode(incidenti@data$altri_veicoli, 
+                                                `AUTO IN SOSTA` = "In sosta",
+                                                `MOTOCICLO IN SOSTA` = "In sosta",
+                                                `Nessuno` = "Nessuno",
+                                                `IGNOTO` = "Ignoto",
+                                                .default = "In movimento")
+
+# creo una nuova variabile per la data del sinistro, nel formato corretto
+incidenti@data$data_ok <- date(incidenti@data$DATA)
+
+# recupero le date di inizio e fine del periodo a cui si riferisce il dataset
+min(incidenti@data$data_ok) # 2 aprile 2011.  i dati partono dall'aprile 2011
+max(incidenti@data$data_ok) # 31 marzo 2015.  i dati finiscono con il marzo 2015
+
+# aggiungo informazioni sull'ora dei sinistri, da altre variabili
+incidenti@data$data_ok <- anytime(str_c(as.character(incidenti@data$DATA),str_replace(as.character(incidenti@data$ORA), "\\.",":"), sep= " "))
+
+# creo una nuova variabile, per avere statistiche esatte per periodi di un anno
+incidenti@data$periodo <- ifelse(incidenti@data$data_ok<date("2012-04-01"), "Aprile 2011 - Marzo 2012", ifelse(incidenti@data$data_ok<date("2013-04-01"), "Aprile 2012 - Marzo 2013", ifelse(incidenti@data$data_ok<date("2014-04-01"), "Aprile 2013 - Marzo 2014","Aprile 2014 - Marzo 2015")))
+
+# riordino i livelli del fattore mese
+mesi <- levels(incidenti@data$MESE)
+mesi <- mesi[c(11,10,12,2,6,4:5,1,9,8,7,3)]
+incidenti@data$MESE <- factor(incidenti@data$MESE, levels = mesi)
+
+# creo una nuova variabile per il mese, in cui l'ordine dei livelli corrisponde a quello dei mesi nei periodi di un anno coperti, per i plot
+incidenti@data$MESE2 <- factor(incidenti@data$MESE, levels = mesi[c(4:12,1:3)])
+
+# riordino i livelli del fattore che codifica il giorno della settimana in cui è avvenuto il sinistro
+giorni <- levels(incidenti@data$GIORNO)
+giorni <- giorni[c(3:5,2,7,6,1)]
+incidenti@data$GIORNO <- factor(incidenti@data$GIORNO, levels = giorni)
+
+# creo una variabile per il tipo di giorno settimanale
+incidenti@data$settimanale <- if_else(incidenti@data$GIORNO %in% giorni[1:5], "Giorni lavorativi", "Giorni festivi")
+
+# creo una nuova variabile per la fascia oraria
+incidenti@data$ora2 <- as.numeric(str_sub(incidenti@data$ORA, 1,2))
+
+# compute basic summary statistics about the total number of accidents in the period, and about the yearly frequency and daily rate. 
+numero_giorni <- 4*365
+summary_stats <- incidenti@data %>% group_by(periodo) %>% summarise(n=n()) %>% ungroup() %>% summarise(media = mean(n), sd = sd(n), totale = sum(n), tasso = totale/numero_giorni, lower_ci_tasso = tasso - 1.96*sqrt(totale)/numero_giorni, upper_ci_tasso = tasso + 1.96*sqrt(totale)/numero_giorni)
+
+# read cycle lanes shapefile
+ciclabili <- readOGR("percorsi_ciclabili/", layer="percorsi_ciclabiliLine")
+#ciclabili@proj4string
+ciclabili <- spTransform(ciclabili, CRS(latlong))
+
+# esploro la struttura del dataset associato allo SpatialLinesDataFrame
+#glimpse(ciclabili@data) # ci sono informazioni che potrebbero essere rappresentate nella mappa
+
+#levels(ciclabili@data$TIPO)
+#levels(ciclabili@data$DESCRIZION)
+
+# funzione per preparare le etichette da mostrare in pop-up al click sui sinistri
+make_labels <- function(data, anno=NULL) {
+  if (!is.null(anno)){
+    data <- filter(data, ANNO==anno)
+  }
+  labels <- sprintf(
+    "<i>Data: </i>%s %s %s %s<br/><i>Ore:</i> %s<br/><i>Luogo:</i> %s<br/><i>Altri veicoli coinvolti: </i> %s",
+    data$GIORNO,
+    str_sub(data$DATA, start=9),
+    data$MESE,
+    data$ANNO,
+    data$ORA,
+    ifelse(is.na(data$CIVICO),str_c("Incrocio",data$STRADA, "con", data$STRADA_2, sep=" "), str_c(data$STRADA, ", ", data$CIVICO, sep="")),
+    ifelse(data$TIPO_VA=="VELOCIPEDE", ifelse(is.na(as.character(data$TIPO_VB)),"Nessuno",as.character(data$TIPO_VB)), as.character(data$TIPO_VA))) %>% 
+    lapply(htmltools::HTML)
+  return(labels)
+}
+
+# funzione per preparare le etichette in pop-up per le piste ciclabili
+make_labels_ciclabili <- function(data) {
+  labels <- sprintf(
+    "<i>Tipo: </i>%s <br/><i>Descrizione:</i> %s",
+    data$TIPO,
+    data$DESCRIZION
+    ) %>% 
+    lapply(htmltools::HTML)
+  return(labels)
+}
+
+# calcolo il numero di giorni infrasettimanali e di weekend nel periodo
+giorni_periodo <- seq(as.Date('2011-04-01'), as.Date('2015-03-30'), by='days')
+n_infrasettimanali <- length(giorni_periodo[isWeekday(giorni_periodo)]) 
+n_weekend <- length(giorni_periodo[!isWeekday(giorni_periodo)])
+
+# calcolo frequente e tassi per giorni infrasettimanali e weekend
+frequenze_giorni_tipo <- incidenti@data %>% 
+  group_by(settimanale) %>% 
+  summarise(n=n()) %>% 
+  mutate(percentuale=n/sum(n)*100) %>% 
+  bind_cols(denominatore = c(n_weekend, n_infrasettimanali)) %>% 
+  mutate(tasso = n/denominatore, lower_ci_tasso = tasso - 1.96*sqrt(n)/denominatore, upper_ci_tasso = tasso + 1.96*sqrt(n)/denominatore)
+
+```
+
+Sidebar {.sidebar}
+=====================================
+
+#### Mobilità ciclistica ed incidenti
+
+I ciclisti, insieme ai pedoni, sono gli utenti più vulnerabili della strada.  Per comprendere meglio i rischi a cui vanno incontro muovendosi in città, ho realizzato questo sito che permette di esplorare i dati dei sinistri che hanno coinvolto almeno un ciclista avvenuti a Firenze tra il 1 Aprile 2011 e il 31 Marzo 2015.  
+
+I dati utilizzati sono quelli messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1).
+
+Le diverse sezioni del sito permettono di analizzare aspetti come il trend nel numero dei sinistri negli anni, la distribuzione spaziale degli incidenti, e le variazioni nel numero e nel in base alla giorno e/o all'ora.  Per accedere alle diverse sezioni cliccate sulle voci della barra di navigazione in alto.  
+
+Se trovi utile ed interessante questo sito, ricordati di condividerlo sui tuoi canali social usando i link a destra nella barra di navigazione.
+
+Introduzione {data-orientation=rows}
+===================================== 
+
+Row {data-height=180}
+-------------------------------------
+
+### Incidenti nel perido
+
+```{r}
+valueBox(value = summary_stats$totale, color = "danger", icon = "fa-bicycle")
+```
+
+### Numero medio di incidenti per anno
+
+```{r}
+valueBox(value = summary_stats$media, caption = str_c("Numero medio di incidenti per anno (sd = ", round(summary_stats$sd, digits = 1), ")", sep = ""), color = "danger", icon = "fa-line-chart")
+```
+
+
+### Tasso giornaliero di incidenti
+
+```{r}
+valueBox(value = round(summary_stats$tasso, digits = 2), caption = str_c("Tasso giornaliero di incidenti (95% CI: ", round(summary_stats$lower_ci_tasso, digits = 2), "-",  round(summary_stats$upper_ci_tasso, digits = 2), ")", sep = ""), color = "danger", icon = "fa-calendar")
+```
+
+Row {data-height=620}
+-------------------------------------
+
+### Con chi? {.no-title}
+
+```{r}
+incidenti@data %>% 
+  group_by(altro_veicolo_recoded) %>% 
+  summarise(n = n()) %>% 
+  mutate(percentuale = n*100/sum(n)) %>% 
+  ggplot(aes(x = altro_veicolo_recoded, y = percentuale, fill = altro_veicolo_recoded)) + 
+  geom_bar(stat = "identity") +
+  labs(fill = "Altri veicoli\ncoinvolti") +
+  xlab("") +
+  ylab("Percentuale sul totale dei sinistri") +
+  geom_text(aes(label = paste(round(percentuale, digits = 1), "%", sep = " ")), size = 3, hjust = -0.2) + #position = position_dodge(.9), 
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 10)) +
+  ggtitle("Con chi?", subtitle = "Tipologia di veicoli coinvolti nei sinistri con un velocipede") +
+  coord_flip() 
+
+```
+
+
+### Commenti {.no-title} 
+
+```{r}
+incidenti@data %>% 
+  group_by(periodo, altro_veicolo_recoded) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(altro_veicolo_recoded)) %>% 
+  mutate(totale_anno = sum(n), y_lab = cumsum(n) - n/2) %>% 
+  ggplot(aes(x = periodo, y = n, fill = altro_veicolo_recoded, group = altro_veicolo_recoded)) +
+  # geom_line(stat = "identity") +
+  scale_x_discrete(labels = c("04/2011 - 03/2012", 
+                              "04/2012 - 03/2013", 
+                              "04/2013 - 03/2014", 
+                              "04/2014 - 03/2015")) + 
+  geom_area() +
+  geom_text(aes(label = if_else(n<20, "", as.character(n)), y = y_lab), size = 3) + 
+  ylab("Numero di incidenti") +
+  xlab("Periodo") +
+  labs(fill = "Altri veicoli\ncoinvolti") +
+  geom_smooth(aes(x = periodo, y = tot, group = 1), 
+              size = 1.5, 
+              linetype = "dashed",
+              method = "lm", 
+              se = FALSE, 
+              data = incidenti@data %>%
+              group_by(periodo) %>%
+              summarise(tot = n()),
+            inherit.aes = FALSE) +
+  ggtitle("Andamento", subtitle = "Frequenza dei sinistri per anno e tipo di veicolo coinvolto") +
+  theme(legend.position = "none")
+
+```
+
+Row {data-height=200}
+-------------------------------------
+
+### Commenti tipo {.no-title}
+
+In **oltre il 50% degli incidenti** era coinvolta un'**autovettura**. Le auto risultano pertanto la prima causa di incidenti con i ciclisti, seguite dai motocicli, che sono stati coinvolti nel 16% dei casi, percentuale che sale al 20% se includiamo anche i ciclomotori.
+
+### Commenti trend {.no-title}
+
+Dopo un calo abbastanza deciso del numero di incidenti tra il primo ed il secondo periodo, i sinistri con ciclisti sono graduatamente aumentati, indipendentemente dal tipo di veicoli coinvolti.
+
+Dove
+===================================== 
+
+Column
+-----------------------------------------------------------------------
+
+### Mappa degli incidenti nel periodo 2011-2015
+
+```{r}
+leaflet(incidenti) %>% 
+  setView(lng = 11.25, lat = 43.783333, zoom = 14) %>% 
+  addProviderTiles(providers$Esri.WorldStreetMap) %>% 
+  addPolylines(data = ciclabili, color="darkgreen", group="Piste ciclabili", popup = make_labels_ciclabili(ciclabili@data)) %>% 
+  addCircleMarkers(popup=~make_labels(incidenti@data), group="Incidenti", radius=2) %>% 
+  addHeatmap(blur = 20, max = 0.05, radius = 15, group = "Densità") %>% 
+  addLayersControl(overlayGroups = c("Incidenti","Densità","Piste ciclabili"),
+                   options = layersControlOptions(collapsed = TRUE),
+                   position = "topleft"
+  ) 
+```
+
+> I piccoli cerchi blu rappresentano i sinistri avvenuti nel periodo oggetto di analisi. Cliccando sui cerchi è possibile visualizzare ulteriori informazioni sul sinistro. Le linee verdi rappresentano i percorsi ciclabili. La densità spaziale degli incidenti è rappresentata attraverso la mappa di colore, dove il rosso indica maggiore densità.  È possibile controllare la visibilità dei cerchi, delle ciclabili e della densità attraverso i controlli in alto a sinistra della mappa.
+
+
+
+Quando {data-orientation=rows}
+===================================== 
+
+Row {data-height=600}
+-------------------------------------
+
+### Distribuzione degli incidenti durante la settimana {data-width=600}
+
+```{r}
+
+incidenti@data %>% 
+  group_by(GIORNO) %>% 
+  summarise(n=n()) %>% 
+  mutate(percentuale=n/sum(n)*100) %>% 
+  ggplot(aes(x=GIORNO, y=n, group=1)) +
+  geom_bar(stat = "identity", fill = "blue", size = 1.5) +
+  geom_text(aes(label = str_c(n, "\n(", round(percentuale, digits = 1), "%)", sep = "")), nudge_y = 17, size = 3) +
+  ylab("Frequenza (n. incidenti)") +
+  xlab("") + 
+  geom_text(aes(label = str_c(n, "  sinistri (", round(percentuale, digits = 1), "%)", " (", round(tasso, digits = 2), ")*"), x = c(5.5, 2.5), y = c(275, 275)), data = frequenze_giorni_tipo, inherit.aes = FALSE) + 
+  annotate("text", x = c(2.5, 5.5), y = c(300, 300), label = c("Giorni feriali", "Giorni festivi")) +
+  # annotate("text", label = "* tasso giornaliero", x = 1.5, y = -25) +
+  labs(caption = "* tasso giornaliero") # +
+  #ggtitle("Frequenza degli incidenti durante la settimana")
+
+```
+
+### commenti {data-width=400, .no-title}
+
+Oltre l'80% dei sinistri è avvenuto in un giorno feriale, e le percentuali più alte si riscontrano nei giorni della prima parte della settimana, il martedì ed il mercoledì, mentre la percentuale più bassa si rileva per la domenica. Il tasso di incidenti durante la settimana (1 al giorno) è il doppio di quello durante i weekend (1 ogni 2 giorni). Sembra quindi che il grosso degli incidenti sia legato alla mobilità connessa al lavoro.  
+
+Durante la settimana gli incidenti si concentrano prevalentemente in due fasce orarie, la mattina tra le 7 e le 12 (con picchi tra le 9 e le 10 e tra le 11 e le 12), ed il pomeriggio, tra le 15 e le 20. Nella fascia oraria serale, la frequenza più alta degli incidenti si rileva il venerdì, mentre dopo mezzanotte la frequenza degli incidenti è più alta durante il weekend (le notti tra venerdì e sabato e tra sabato e domanica, ma in parte anche fino all'una del mattino di lunedì). Il sabato, infine, si rileva un picco di incidenti la mattina tra le 11 e le 13.
+
+Row {data-height=400}
+-------------------------------------
+   
+### Distribuzione degli incidenti in base al giorno della settimana e all'ora
+
+```{r  fig.width=8.5, fig.height=2.5}
+
+incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percentuale=n/sum(n)*100) %>% 
+  ggplot(aes(factor(ora2), GIORNO)) +
+  geom_tile(aes(fill = n), colour = "white") + # or map fill to percentuale
+  scale_fill_distiller(palette = "YlGnBu", direction = 1) +
+  #scale_x_continuous(breaks = 0:23) + 
+  geom_text(aes(label = str_c(n)), size = 2) + 
+  ylab("") +
+  xlab("") +
+  labs(fill = "Frequenza\n(n. incidenti)") +
+  #ggtitle("Frequenza assoluta degli incidenti in base al giorno della settimana ed all'ora") +
+  theme_minimal() +
+  theme(
+    #legend.position = "bottom", 
+    #legend.key.width = unit(2, "cm"),
+    panel.grid = element_blank()) + 
+  coord_equal()
+
+```   
+
+
+Durante l'anno 
+===================================== 
+
+testo di prova
