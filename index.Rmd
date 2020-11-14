@@ -4,6 +4,8 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: fill
+    source_code: embed
+    social: [ "twitter", "facebook", "menu" ]
 
 ---
 
@@ -99,13 +101,17 @@ incidenti@data$data_ok <- anytime(str_c(as.character(incidenti@data$DATA),str_re
 # creo una nuova variabile, per avere statistiche esatte per periodi di un anno
 incidenti@data$periodo <- ifelse(incidenti@data$data_ok<date("2012-04-01"), "Aprile 2011 - Marzo 2012", ifelse(incidenti@data$data_ok<date("2013-04-01"), "Aprile 2012 - Marzo 2013", ifelse(incidenti@data$data_ok<date("2014-04-01"), "Aprile 2013 - Marzo 2014","Aprile 2014 - Marzo 2015")))
 
+# convert to factor
+incidenti@data$MESE <- factor(incidenti@data$MESE)
+incidenti@data$GIORNO <- factor(incidenti@data$GIORNO)
+
 # riordino i livelli del fattore mese
 mesi <- levels(incidenti@data$MESE)
-mesi <- mesi[c(11,10,12,2,6,4:5,1,9,8,7,3)]
+mesi <- mesi[c(2, 8, 6:7, 1, 12, 11, 10, 3, 5, 4, 9)] #mesi[c(11,10,12,2,6,4:5,1,9,8,7,3)]
 incidenti@data$MESE <- factor(incidenti@data$MESE, levels = mesi)
 
 # creo una nuova variabile per il mese, in cui l'ordine dei livelli corrisponde a quello dei mesi nei periodi di un anno coperti, per i plot
-incidenti@data$MESE2 <- factor(incidenti@data$MESE, levels = mesi[c(4:12,1:3)])
+incidenti@data$MESE2 <- incidenti@data$MESE # factor(incidenti@data$MESE, levels = mesi[c(4:12,1:3)])
 
 # riordino i livelli del fattore che codifica il giorno della settimana in cui è avvenuto il sinistro
 giorni <- levels(incidenti@data$GIORNO)
@@ -175,15 +181,45 @@ frequenze_giorni_tipo <- incidenti@data %>%
   bind_cols(denominatore = c(n_weekend, n_infrasettimanali)) %>% 
   mutate(tasso = n/denominatore, lower_ci_tasso = tasso - 1.96*sqrt(n)/denominatore, upper_ci_tasso = tasso + 1.96*sqrt(n)/denominatore)
 
-# serie per dygraph
+# time seriea for dygraph
 incidenti_date <- data.frame(data = incidenti@data$DATA) %>% 
   group_by(data) %>% 
   summarise(n = n())
 # glimpse(incidenti_date)
-incidenti_date$data <- as.POSIXct(incidenti_date$data )
-serie_incidenti <- xts::xts(x = incidenti_date$n, order.by = incidenti_date$data)
+incidenti_date$data <- as.Date(incidenti_date$data)
+serie_incidenti <- xts(x = incidenti_date$n, order.by = incidenti_date$data)
+names(serie_incidenti) <- "incidenti"
 
 ep1 <- endpoints(serie_incidenti, on="months")
+
+# import weather data
+temperature <- read_delim("meteo/temp_TOS11000111.csv", 
+                         skip = 19, 
+                         delim = ";",
+                         locale = locale(decimal_mark = ".",
+                                         date_format = "%d/%m/%Y"),
+                         col_names = c("giorno", "max", "min"),
+                         col_types = cols(giorno = "D",
+                                          min = "d",
+                                          max = "d")
+                         )
+# glimpse(temperature)
+temperature <- temperature %>% mutate(media = (min + max)/2)
+temperature_ts <- xts(temperature[,-1], order.by = temperature$giorno)
+#glimpse(temperature_ts)
+temperature_ts_periodo <- temperature_ts['2011-04-01/2015-03-31']
+
+# merge the two timeseries
+incidenti_ts <- merge.xts(
+  temperature_ts_periodo,
+  serie_incidenti
+)
+
+# aggrego per mese (averaging temperatures and summing dayily incidents)
+incidenti_ts_mesili <- cbind(
+  apply.monthly(incidenti_ts[, 1:3], FUN=mean),
+  apply.monthly(incidenti_ts[, 4], FUN=function(x) sum(x, na.rm = TRUE))
+)
 
 ```
 
@@ -192,11 +228,9 @@ Sidebar {.sidebar}
 
 #### Mobilità ciclistica ed incidenti
 
-I ciclisti, insieme ai pedoni, sono gli utenti più vulnerabili della strada.  Per comprendere meglio i rischi a cui vanno incontro muovendosi in città, ho realizzato questo sito che permette di esplorare i dati dei sinistri che hanno coinvolto almeno un ciclista avvenuti a Firenze tra il 1 Aprile 2011 e il 31 Marzo 2015.  
+I ciclisti, insieme ai pedoni, sono gli utenti più vulnerabili della strada.  Per comprendere meglio i rischi a cui vanno incontro muovendosi in città, ho realizzato questo sito che permette di esplorare i dati dei sinistri che hanno coinvolto almeno un ciclista avvenuti a Firenze tra il 1 Aprile 2011 e il 31 Marzo 2015, messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1).  
 
-I dati dei sinistri sono quelli messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1). I dati meteo sono stati scaricati dal sito del [Servizio Idrogeologico della Regione Toscana](http://www.sir.toscana.it) ai seguenti indirizzi: [precipitazioni](http://www.sir.toscana.it/archivio/download.php?IDST=pluvio&IDS=TOS01001095), [temperature](http://www.sir.toscana.it/archivio/download.php?IDST=termo_csv&IDS=TOS11000111).
-
-Le diverse sezioni del sito permettono di analizzare aspetti come il trend nel numero dei sinistri negli anni, la distribuzione spaziale degli incidenti, e le variazioni nel numero e nel in base alla giorno e/o all'ora.  Per accedere alle diverse sezioni cliccate sulle voci della barra di navigazione in alto.  
+Le diverse sezioni del sito permettono di analizzare aspetti come il trend nel numero dei sinistri [negli anni](#durante-lanno), la [distribuzione spaziale](#dove) degli incidenti, e la loro frequenza in base al [giorno e/o all'ora](#durante-la-settimana).  Per accedere alle diverse sezioni cliccate sulle voci della barra di navigazione in alto.  
 
 Se trovi utile ed interessante questo sito, ricordati di condividerlo sui tuoi canali social usando i link a destra nella barra di navigazione.
 
@@ -206,7 +240,7 @@ Introduzione
 Row {data-height=180}
 -------------------------------------
 
-### Incidenti nel perido
+### Incidenti nel periodo
 
 ```{r}
 valueBox(value = summary_stats$totale, color = "danger", icon = "fa-bicycle")
@@ -215,20 +249,25 @@ valueBox(value = summary_stats$totale, color = "danger", icon = "fa-bicycle")
 ### Numero medio di incidenti per anno
 
 ```{r}
-valueBox(value = summary_stats$media, caption = str_c("Numero medio di incidenti per anno (sd = ", round(summary_stats$sd, digits = 1), ")", sep = ""), color = "danger", icon = "fa-line-chart")
+valueBox(value = str_c(summary_stats$media, " (", round(summary_stats$sd, digits = 1), ")", sep = ""), caption = "Numero medio di incidenti per anno (sd)", color = "danger", icon = "fa-line-chart")
 ```
-
 
 ### Tasso giornaliero di incidenti
 
 ```{r}
-valueBox(value = round(summary_stats$tasso, digits = 2), caption = str_c("Tasso giornaliero di incidenti (95% CI: ", round(summary_stats$lower_ci_tasso, digits = 2), "-",  round(summary_stats$upper_ci_tasso, digits = 2), ")", sep = ""), color = "danger", icon = "fa-calendar")
+valueBox(value = str_c(round(summary_stats$tasso, digits = 2), " (", round(summary_stats$lower_ci_tasso, digits = 2), "-",  round(summary_stats$upper_ci_tasso, digits = 2), ")", sep = ""), caption = "Tasso giornaliero di incidenti (95% CI)", color = "danger", icon = "fa-calendar")
+```
+
+### Autovetture e sinistri
+
+```{r}
+valueBox(value = "56.1%", caption = "Incidenti in cui era coinvolta un'auto", color = "danger", icon = "fa-car")
 ```
 
 Row {data-height=620}
 -------------------------------------
 
-### Con chi? {.no-title}
+### Con chi?
 
 ```{r}
 incidenti@data %>% 
@@ -242,13 +281,13 @@ incidenti@data %>%
   ylab("Percentuale sul totale dei sinistri") +
   geom_text(aes(label = paste(round(percentuale, digits = 1), "%", sep = " ")), size = 3, hjust = -0.2) + #position = position_dodge(.9), 
   scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 10)) +
-  ggtitle("Con chi?", subtitle = "Tipologia di veicoli coinvolti nei sinistri con un velocipede") +
+  ggtitle("Tipologia di veicoli coinvolti nei sinistri con un velocipede") +
   coord_flip() 
 
 ```
 
 
-### Commenti {.no-title} 
+### Andamento
 
 ```{r}
 incidenti@data %>% 
@@ -276,7 +315,7 @@ incidenti@data %>%
               group_by(periodo) %>%
               summarise(tot = n()),
             inherit.aes = FALSE) +
-  ggtitle("Andamento", subtitle = "Frequenza dei sinistri per anno e tipo di veicolo coinvolto") +
+  ggtitle("Frequenza dei sinistri per anno e tipo di veicolo coinvolto") +
   theme(legend.position = "none")
 
 ```
@@ -298,7 +337,7 @@ Dove {data-orientation=columns}
 Column
 -----------------------------------------------------------------------
 
-### Mappa degli incidenti nel periodo 2011-2015
+### Mappa degli incidenti nel periodo 2011-2015 {#dove}
 
 ```{r}
 leaflet(incidenti) %>% 
@@ -323,7 +362,7 @@ Durante la settimana {data-navmenu="Quando"}
 Row {data-height=600}
 -------------------------------------
 
-### Distribuzione degli incidenti durante la settimana {data-width=600}
+### Distribuzione degli incidenti durante la settimana {data-width=600, #giorni}
 
 ```{r}
 
@@ -353,7 +392,7 @@ Durante la settimana gli incidenti si concentrano prevalentemente in due fasce o
 Row {data-height=400}
 -------------------------------------
    
-### Distribuzione degli incidenti in base al giorno della settimana e all'ora
+### Distribuzione degli incidenti in base al giorno della settimana e all'ora {#giorni}
 
 ```{r  fig.width=8.5, fig.height=2.5}
 
@@ -383,7 +422,7 @@ Durante l'anno {data-navmenu="Quando"}
 Row {data-height=600}
 -------------------------------------
 
-### Frequenza dei sinistri per mese {data-width=600}
+### Frequenza dei sinistri per mese {data-width=600} 
 
 ```{r}
 incidenti@data %>% 
@@ -401,24 +440,43 @@ incidenti@data %>%
 
 ### Commenti {data-width=400, .no-title}
 
-Il mese in cui si rileva la più bassa frequenza di sinistri è febbraio, mentre il maggior numero di incidenti si osserva a ottobre. In generale, si osserva che i sinistri diminuiscono nei mesi invernali per poi aumentare in primavera ed estate, benché, come già detto, il picco si registri in autunno. Inoltre, una bassa frequenza di sinistri si rileva anche ad agosto ed a luglio, probabilmente perché in questi mesi molti cittadini lasciano la città per andare in ferie.  
+Il mese in cui si rileva la **più bassa** frequenza di sinistri è **febbraio**, mentre il **maggior numero** di incidenti si osserva a **ottobre**.  
 
-Per verificare ulteriormente questi trend ciclici, è utile fare un ulteriore panel di grafici della frequenza mensile dei sinistri per i 4 periodi coperti dai dati. Il risultato mostra chiaramente che la generizzabilità del pattern attraverso i periodi, per quanto in un caso ( 2012-2013), la differenza tra i valori nei mesi più caldi e quelli invernali risulti più attenuata.
+In generale, si osserva che i sinistri diminuiscono nei mesi invernali per poi aumentare in primavera ed estate, benché, come già detto, il picco si registri in autunno. Inoltre, una bassa frequenza di sinistri si rileva anche ad agosto ed a luglio, probabilmente perché in questi mesi molti cittadini lasciano la città per andare in ferie.  
+
+Come si può verificare nel grafico sottostante, che mostra l'andamento del numero di incidenti per mese in tutto il periodo coperto dai dati, questo pattern è più o meno generalizzabile negli anni, benché in un caso ( 2012-2013), la differenza tra i valori nei mesi più caldi e quelli invernali risulti più attenuata. Questo trend, inoltre è parzialmente in linea con l'andamento delle temperature medie mensili, rappresentate dalla linea verde nel grafico.
 
 Row {data-height=400}
 -------------------------------------
 
-### per anno e periodo {.no-title}
+### Andamento mensile dei sinistri nel periodo
 
 ```{r }
 
-dygraph(period.apply(serie_incidenti, INDEX=ep1, FUN=sum), ylab = "N. incidenti") %>% 
-  dySeries(label = "Incidenti", 
+# advanced dygraph version including temperature data
+dygraph(incidenti_ts_mesili[, 3:4]) %>% 
+  dyAxis("y", label = "N. incidenti") %>%
+  dyAxis("y2", label = "Temperatura media (C)", independentTicks = TRUE) %>%
+  dySeries("incidenti",
+           label = "Incidenti", 
            color = "blue",
            drawPoints = TRUE,
            pointSize = 2,
-           strokeWidth = 1.5)
+           strokeWidth = 1.5) %>% 
+  dyLegend(width = 500) %>% 
+  dySeries("media", label = "Temperatura", axis = 'y2', fillGraph = TRUE)
 
+# basic dygrph version
+# dygraph(period.apply(serie_incidenti, INDEX=ep1, FUN=sum), ylab = "N. incidenti") %>% 
+#   dySeries(label = "Incidenti", 
+#            color = "blue",
+#            drawPoints = TRUE,
+#            pointSize = 2,
+#            strokeWidth = 1.5) %>% 
+#   dyShading(from = "2012-4-15", to = "2013-4-15") %>%
+#   dyShading(from = "2014-4-15", to = "2015-4-15") 
+
+# static ggplot panel
 # fig.width=8.5, fig.height=3
 # incidenti@data %>% 
 #   group_by(periodo, MESE2) %>% 
