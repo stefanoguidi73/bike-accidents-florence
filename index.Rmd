@@ -2,8 +2,8 @@
 title: "4 anni di incidenti in bici a Firenze"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: rows
-    vertical_layout: fill
+    orientation: columns
+    vertical_layout: scroll
     source_code: embed
     social: [ "twitter", "facebook", "menu" ]
 
@@ -223,10 +223,14 @@ incidenti_ts_mesili <- cbind(
 
 ```
 
-Sidebar {.sidebar}
-=====================================
 
-#### Mobilità ciclistica ed incidenti
+Introduzione 
+===================================== 
+
+Column {data-width=300}
+-------------------------------------
+
+### Mobilità ciclistica ed incidenti
 
 I ciclisti, insieme ai pedoni, sono gli utenti più vulnerabili della strada.  Per comprendere meglio i rischi a cui vanno incontro muovendosi in città, ho realizzato questo sito che permette di esplorare i dati dei sinistri che hanno coinvolto almeno un ciclista avvenuti a Firenze tra il 1 Aprile 2011 e il 31 Marzo 2015, messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1).  
 
@@ -234,10 +238,7 @@ Le diverse sezioni del sito permettono di analizzare aspetti come il trend nel n
 
 Se trovi utile ed interessante questo sito, ricordati di condividerlo sui tuoi canali social usando i link a destra nella barra di navigazione.
 
-Introduzione 
-===================================== 
-
-Row {data-height=180}
+Column 
 -------------------------------------
 
 ### Incidenti nel periodo
@@ -246,28 +247,13 @@ Row {data-height=180}
 valueBox(value = summary_stats$totale, color = "danger", icon = "fa-bicycle")
 ```
 
-### Numero medio di incidenti per anno
-
-```{r}
-valueBox(value = str_c(summary_stats$media, " (", round(summary_stats$sd, digits = 1), ")", sep = ""), caption = "Numero medio di incidenti per anno (sd)", color = "danger", icon = "fa-line-chart")
-```
-
-### Tasso giornaliero di incidenti
-
-```{r}
-valueBox(value = str_c(round(summary_stats$tasso, digits = 2), " (", round(summary_stats$lower_ci_tasso, digits = 2), "-",  round(summary_stats$upper_ci_tasso, digits = 2), ")", sep = ""), caption = "Tasso giornaliero di incidenti (95% CI)", color = "danger", icon = "fa-calendar")
-```
-
 ### Autovetture e sinistri
 
 ```{r}
 valueBox(value = "56.1%", caption = "Incidenti in cui era coinvolta un'auto", color = "danger", icon = "fa-car")
 ```
 
-Row {data-height=620}
--------------------------------------
-
-### Con chi?
+### Con chi? {data-height=500}
 
 ```{r}
 incidenti@data %>% 
@@ -286,8 +272,24 @@ incidenti@data %>%
 
 ```
 
+> In **oltre il 50% degli incidenti** era coinvolta un'**autovettura**. Le auto risultano pertanto la prima causa di incidenti con i ciclisti, seguite dai motocicli, che sono stati coinvolti nel 16% dei casi, percentuale che sale al 20% se includiamo anche i ciclomotori.
 
-### Andamento
+Column 
+-------------------------------------
+
+### Numero medio di incidenti per anno
+
+```{r}
+valueBox(value = str_c(summary_stats$media, " (", round(summary_stats$sd, digits = 1), ")", sep = ""), caption = "Numero medio di incidenti per anno (sd)", color = "danger", icon = "fa-line-chart")
+```
+
+### Tasso giornaliero di incidenti
+
+```{r}
+valueBox(value = str_c(round(summary_stats$tasso, digits = 2), " (", round(summary_stats$lower_ci_tasso, digits = 2), "-",  round(summary_stats$upper_ci_tasso, digits = 2), ")", sep = ""), caption = "Tasso giornaliero di incidenti (95% CI)", color = "danger", icon = "fa-calendar")
+```
+
+### Andamento {data-height=500}
 
 ```{r}
 incidenti@data %>% 
@@ -320,16 +322,7 @@ incidenti@data %>%
 
 ```
 
-Row {data-height=200}
--------------------------------------
-
-### Commenti tipo {.no-title}
-
-In **oltre il 50% degli incidenti** era coinvolta un'**autovettura**. Le auto risultano pertanto la prima causa di incidenti con i ciclisti, seguite dai motocicli, che sono stati coinvolti nel 16% dei casi, percentuale che sale al 20% se includiamo anche i ciclomotori.
-
-### Commenti trend {.no-title}
-
-Dopo un calo abbastanza deciso del numero di incidenti tra il primo ed il secondo periodo, i sinistri con ciclisti sono graduatamente aumentati, indipendentemente dal tipo di veicoli coinvolti.
+> La distribuzione delle tipologie di incidenti che hanno coinvolto un ciclista è rimasta invariata nel periodo osservato. Dopo un calo abbastanza deciso del numero di incidenti tra il primo ed il secondo periodo, i sinistri con ciclisti sono graduatamente aumentati, indipendentemente dal tipo di veicoli coinvolti.
 
 Dove {data-orientation=columns}
 ===================================== 
@@ -339,7 +332,7 @@ Column
 
 ### Mappa degli incidenti nel periodo 2011-2015 {#dove}
 
-```{r}
+```{r, fig.height=6.8}
 leaflet(incidenti) %>% 
   setView(lng = 11.25, lat = 43.783333, zoom = 14) %>% 
   addProviderTiles(providers$Esri.WorldStreetMap) %>% 
@@ -356,11 +349,17 @@ leaflet(incidenti) %>%
 
 
 
-Durante la settimana {data-navmenu="Quando"}
+Durante la settimana {data-orientation=rows}  
 ===================================== 
 
 Row {data-height=600}
 -------------------------------------
+
+### commenti {data-width=300, .no-title}
+
+Oltre l'80% dei sinistri è avvenuto in un giorno feriale, e le percentuali più alte si riscontrano nei giorni della prima parte della settimana, il martedì ed il mercoledì, mentre la percentuale più bassa si rileva per la domenica. Il tasso di incidenti durante la settimana (1 al giorno) è il doppio di quello durante i weekend (1 ogni 2 giorni). Sembra quindi che il grosso degli incidenti sia legato alla mobilità connessa al lavoro.  
+
+Durante la settimana gli incidenti si concentrano prevalentemente in due fasce orarie, la mattina tra le 7 e le 12 (con picchi tra le 9 e le 10 e tra le 11 e le 12), ed il pomeriggio, tra le 15 e le 20. Nella fascia oraria serale, la frequenza più alta degli incidenti si rileva il venerdì, mentre dopo mezzanotte la frequenza degli incidenti è più alta durante il weekend (le notti tra venerdì e sabato e tra sabato e domanica, ma in parte anche fino all'una del mattino di lunedì). Il sabato, infine, si rileva un picco di incidenti la mattina tra le 11 e le 13.
 
 ### Distribuzione degli incidenti durante la settimana {data-width=600, #giorni}
 
@@ -382,12 +381,6 @@ incidenti@data %>%
   #ggtitle("Frequenza degli incidenti durante la settimana")
 
 ```
-
-### commenti {data-width=400, .no-title}
-
-Oltre l'80% dei sinistri è avvenuto in un giorno feriale, e le percentuali più alte si riscontrano nei giorni della prima parte della settimana, il martedì ed il mercoledì, mentre la percentuale più bassa si rileva per la domenica. Il tasso di incidenti durante la settimana (1 al giorno) è il doppio di quello durante i weekend (1 ogni 2 giorni). Sembra quindi che il grosso degli incidenti sia legato alla mobilità connessa al lavoro.  
-
-Durante la settimana gli incidenti si concentrano prevalentemente in due fasce orarie, la mattina tra le 7 e le 12 (con picchi tra le 9 e le 10 e tra le 11 e le 12), ed il pomeriggio, tra le 15 e le 20. Nella fascia oraria serale, la frequenza più alta degli incidenti si rileva il venerdì, mentre dopo mezzanotte la frequenza degli incidenti è più alta durante il weekend (le notti tra venerdì e sabato e tra sabato e domanica, ma in parte anche fino all'una del mattino di lunedì). Il sabato, infine, si rileva un picco di incidenti la mattina tra le 11 e le 13.
 
 Row {data-height=400}
 -------------------------------------
@@ -416,7 +409,7 @@ incidenti@data %>% group_by(GIORNO, ora2) %>% summarise(n=n()) %>% mutate(percen
 ```   
 
 
-Durante l'anno {data-navmenu="Quando"}
+Durante l'anno {data-orientation=rows}
 ===================================== 
 
 Row {data-height=600}
@@ -438,7 +431,7 @@ incidenti@data %>%
   theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))
 ```
 
-### Commenti {data-width=400, .no-title}
+### Commenti {data-width=300, .no-title}
 
 Il mese in cui si rileva la **più bassa** frequenza di sinistri è **febbraio**, mentre il **maggior numero** di incidenti si osserva a **ottobre**.  
 
