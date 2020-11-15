@@ -5,7 +5,9 @@ output:
     orientation: columns
     vertical_layout: scroll
     source_code: embed
+    logo: bicycle.png
     css: styles.css
+    
     social: [ "twitter", "facebook", "menu" ]
 
 ---
@@ -228,17 +230,6 @@ incidenti_ts_mesili <- cbind(
 Introduzione 
 ===================================== 
 
-Column {data-width=300}
--------------------------------------
-
-### Mobilità ciclistica ed incidenti
-
-I ciclisti, insieme ai pedoni, sono gli utenti più vulnerabili della strada.  Per comprendere meglio i rischi a cui vanno incontro muovendosi in città, ho realizzato questo sito che permette di esplorare i dati dei sinistri che hanno coinvolto almeno un ciclista avvenuti a Firenze tra il 1 Aprile 2011 e il 31 Marzo 2015, messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1).  
-
-Le diverse sezioni del sito permettono di analizzare aspetti come il trend nel numero dei sinistri [negli anni](#durante-lanno), la [distribuzione spaziale](#dove) degli incidenti, e la loro frequenza in base al [giorno e/o all'ora](#durante-la-settimana).  Per accedere alle diverse sezioni cliccate sulle voci della barra di navigazione in alto.  
-
-Se trovi utile ed interessante questo sito, ricordati di condividerlo sui tuoi canali social usando i link a destra nella barra di navigazione.
-
 Column 
 -------------------------------------
 
@@ -254,21 +245,24 @@ valueBox(value = summary_stats$totale, color = "danger", icon = "fa-bicycle")
 valueBox(value = "56.1%", caption = "Incidenti in cui era coinvolta un'auto", color = "danger", icon = "fa-car")
 ```
 
-### Con chi? {data-height=500}
+### Con chi? {data-height=400}
 
 ```{r}
 incidenti@data %>% 
   group_by(altro_veicolo_recoded) %>% 
   summarise(n = n()) %>% 
   mutate(percentuale = n*100/sum(n)) %>% 
+  mutate(altro_veicolo_recoded = factor(altro_veicolo_recoded)) %>% 
   ggplot(aes(x = altro_veicolo_recoded, y = percentuale, fill = altro_veicolo_recoded)) + 
   geom_bar(stat = "identity") +
+  scale_x_discrete(limits = rev(levels(factor(incidenti@data$altro_veicolo_recoded)))) +
   labs(fill = "Altri veicoli\ncoinvolti") +
   xlab("") +
   ylab("Percentuale sul totale dei sinistri") +
   geom_text(aes(label = paste(round(percentuale, digits = 1), "%", sep = " ")), size = 3, hjust = -0.2) + #position = position_dodge(.9), 
   scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 10)) +
-  ggtitle("Tipologia di veicoli coinvolti nei sinistri con un velocipede") +
+  ggtitle("Veicoli coinvolti nei sinistri con un velocipede") +
+  theme(legend.position = "none", axis.text.y = element_text(size = 12, face = "bold")) +
   coord_flip() 
 
 ```
@@ -290,7 +284,7 @@ valueBox(value = str_c(summary_stats$media, " (", round(summary_stats$sd, digits
 valueBox(value = str_c(round(summary_stats$tasso, digits = 2), " (", round(summary_stats$lower_ci_tasso, digits = 2), "-",  round(summary_stats$upper_ci_tasso, digits = 2), ")", sep = ""), caption = "Tasso giornaliero di incidenti (95% CI)", color = "danger", icon = "fa-calendar")
 ```
 
-### Andamento {data-height=500}
+### Andamento {data-height=300}
 
 ```{r}
 incidenti@data %>% 
@@ -324,6 +318,19 @@ incidenti@data %>%
 ```
 
 > La distribuzione delle tipologie di incidenti che hanno coinvolto un ciclista è rimasta invariata nel periodo osservato. Dopo un calo abbastanza deciso del numero di incidenti tra il primo ed il secondo periodo, i sinistri con ciclisti sono graduatamente aumentati, indipendentemente dal tipo di veicoli coinvolti.
+
+Column {data-width=300}
+-------------------------------------
+
+### Mobilità ciclistica ed incidenti
+
+I ciclisti, insieme ai pedoni, sono gli utenti più vulnerabili della strada.  Per comprendere meglio i rischi a cui vanno incontro muovendosi in città, ho realizzato questo sito che permette di esplorare i dati dei sinistri che hanno coinvolto almeno un ciclista avvenuti a Firenze tra il 1 Aprile 2011 e il 31 Marzo 2015, messi a disposizione dal Comune di Firenze sul sito [Open Data](https://opendata.comune.fi.it) al seguente [indirizzo](http://data.comune.fi.it/datastore/download.php?id=6743&type=1).  
+
+Le diverse sezioni del sito permettono di analizzare aspetti come il trend nel numero dei sinistri [negli anni](#durante-lanno), la [distribuzione spaziale](#dove) degli incidenti, e la loro frequenza in base al [giorno e/o all'ora](#durante-la-settimana).  Per accedere alle diverse sezioni cliccate sulle voci della barra di navigazione in alto.  
+
+Se trovi utile ed interessante questo sito, ricordati di condividerlo sui tuoi canali social usando i link a destra nella barra di navigazione.
+
+> Icons made by [xnimrodx](https://www.flaticon.com/authors/xnimrodx) from  [www.flaticon.com](https://www.flaticon.com/)
 
 Dove {data-orientation=columns}
 ===================================== 

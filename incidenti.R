@@ -256,7 +256,7 @@ dygraph(incidenti_ts_mesili[, c(1, 5)]) %>%
            drawPoints = TRUE,
            pointSize = 2,
            strokeWidth = 1.5) %>% 
-  dySeries("mm", axis = 'y2', fillGraph = TRUE)
+  dySeries("Precipitazioni (mm)", axis = 'y2', fillGraph = TRUE)
 
 dygraph(incidenti_ts_mesili[, 4:5]) %>% 
   dyAxis("y", label = "N. incidenti") %>%
@@ -301,8 +301,9 @@ dygraph(incidenti_ts_settimanali[, 4:5]) %>%
   dySeries("media", label = "Temperatura (C)", axis = 'y2', fillGraph = TRUE) %>% 
   dyRangeSelector()
 
+# I dati meteo sono stati scaricati dal sito del [Servizio Idrogeologico della Regione Toscana](http://www.sir.toscana.it) ai seguenti indirizzi: [precipitazioni](http://www.sir.toscana.it/archivio/download.php?IDST=pluvio&IDS=TOS01001095), [temperature](http://www.sir.toscana.it/archivio/download.php?IDST=termo_csv&IDS=TOS11000111).
 
-# fare plot di incidenti nei mesi per tutto il periodo
+# fare plot statici di incidenti nei mesi per tutto il periodo -----
 ggplot(incidenti@data %>% group_by(anno2, MESE2) %>% summarise(n=n()), 
        aes(x=MESE2, y=n, group=1)) +
   geom_line(stat = "identity") +

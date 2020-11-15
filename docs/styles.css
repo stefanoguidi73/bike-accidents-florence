@@ -28,3 +28,13 @@
 .Blu{
   filter: invert(12%) sepia(89%) saturate(6534%) hue-rotate(235deg) brightness(98%) contrast(115%);
 }
+body{
+  text-align: justify;
+}
+.navbar-logo {
+    margin-top: 2px;
+    margin-right: 10px;
+    width: 44px;
+    height: 44px;
+    filter: brightness(0) invert(1);
+}
