@@ -1,0 +1,30 @@
+.Altro{
+  filter: invert(56%) sepia(63%) saturate(1669%) hue-rotate(321deg) brightness(111%) contrast(94%);
+}
+.Autobus{
+  filter: invert(51%) sepia(45%) saturate(1962%) hue-rotate(17deg) brightness(101%) contrast(101%);
+}
+.Autocarro{
+  filter: invert(56%) sepia(54%) saturate(1592%) hue-rotate(33deg) brightness(95%) contrast(105%);
+}
+.Autovettura{
+  filter: invert(36%) sepia(90%) saturate(1490%) hue-rotate(115deg) brightness(103%) contrast(101%);
+}
+.Bicicletta{
+  filter: invert(56%) sepia(37%) saturate(4232%) hue-rotate(133deg) brightness(97%) contrast(101%);
+}
+.Ciclomotore{
+  filter: invert(67%) sepia(29%) saturate(4733%) hue-rotate(147deg) brightness(91%) contrast(100%);
+}
+.Ignoto{
+  filter: invert(65%) sepia(64%) saturate(4527%) hue-rotate(199deg) brightness(106%) contrast(102%);
+}
+.Motociclo{
+  filter: invert(57%) sepia(26%) saturate(1271%) hue-rotate(234deg) brightness(96%) contrast(105%);
+}
+.Nessuno{
+  filter: invert(53%) sepia(82%) saturate(1536%) hue-rotate(291deg) brightness(101%) contrast(101%);
+}
+.Blu{
+  filter: invert(12%) sepia(89%) saturate(6534%) hue-rotate(235deg) brightness(98%) contrast(115%);
+}

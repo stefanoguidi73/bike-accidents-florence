@@ -332,7 +332,7 @@ Column
 
 ### Mappa degli incidenti nel periodo 2011-2015 {#dove}
 
-```{r, fig.height=6.8}
+```{r, fig.height=6.5}
 leaflet(incidenti) %>% 
   setView(lng = 11.25, lat = 43.783333, zoom = 14) %>% 
   addProviderTiles(providers$Esri.WorldStreetMap) %>% 
