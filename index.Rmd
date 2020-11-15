@@ -5,6 +5,7 @@ output:
     orientation: columns
     vertical_layout: scroll
     source_code: embed
+    css: styles.css
     social: [ "twitter", "facebook", "menu" ]
 
 ---
@@ -355,12 +356,6 @@ Durante la settimana {data-orientation=rows}
 Row {data-height=600}
 -------------------------------------
 
-### commenti {data-width=300, .no-title}
-
-Oltre l'80% dei sinistri è avvenuto in un giorno feriale, e le percentuali più alte si riscontrano nei giorni della prima parte della settimana, il martedì ed il mercoledì, mentre la percentuale più bassa si rileva per la domenica. Il tasso di incidenti durante la settimana (1 al giorno) è il doppio di quello durante i weekend (1 ogni 2 giorni). Sembra quindi che il grosso degli incidenti sia legato alla mobilità connessa al lavoro.  
-
-Durante la settimana gli incidenti si concentrano prevalentemente in due fasce orarie, la mattina tra le 7 e le 12 (con picchi tra le 9 e le 10 e tra le 11 e le 12), ed il pomeriggio, tra le 15 e le 20. Nella fascia oraria serale, la frequenza più alta degli incidenti si rileva il venerdì, mentre dopo mezzanotte la frequenza degli incidenti è più alta durante il weekend (le notti tra venerdì e sabato e tra sabato e domanica, ma in parte anche fino all'una del mattino di lunedì). Il sabato, infine, si rileva un picco di incidenti la mattina tra le 11 e le 13.
-
 ### Distribuzione degli incidenti durante la settimana {data-width=600, #giorni}
 
 ```{r}
@@ -381,6 +376,12 @@ incidenti@data %>%
   #ggtitle("Frequenza degli incidenti durante la settimana")
 
 ```
+
+### commenti {data-width=300, .no-title}
+
+Oltre l'80% dei sinistri è avvenuto in un giorno feriale, e le percentuali più alte si riscontrano nei giorni della prima parte della settimana, il martedì ed il mercoledì, mentre la percentuale più bassa si rileva per la domenica. Il tasso di incidenti durante la settimana (1 al giorno) è il doppio di quello durante i weekend (1 ogni 2 giorni). Sembra quindi che il grosso degli incidenti sia legato alla mobilità connessa al lavoro.  
+
+Durante la settimana gli incidenti si concentrano prevalentemente in due fasce orarie, la mattina tra le 7 e le 12 (con picchi tra le 9 e le 10 e tra le 11 e le 12), ed il pomeriggio, tra le 15 e le 20. Nella fascia oraria serale, la frequenza più alta degli incidenti si rileva il venerdì, mentre dopo mezzanotte la frequenza degli incidenti è più alta durante il weekend (le notti tra venerdì e sabato e tra sabato e domanica, ma in parte anche fino all'una del mattino di lunedì). Il sabato, infine, si rileva un picco di incidenti la mattina tra le 11 e le 13.
 
 Row {data-height=400}
 -------------------------------------
