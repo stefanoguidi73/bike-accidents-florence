@@ -246,6 +246,16 @@ incidenti_ts_mesili <- cbind(
   apply.monthly(incidenti_ts[, 5], FUN=function(x) sum(x, na.rm = TRUE))
 )
 head(incidenti_ts_mesili)
+mesi <- levels(incidenti@data$MESE2)
+
+# compute aggregates x month
+incidenti_ts_mesili %>% 
+  bind_cols(mese = rep(levels(incidenti@data$MESE2), times = 4)) %>% #View()
+  mutate(mese = factor(mese, levels = mesi) ) %>% 
+  group_by(mese) %>%
+  summarise(media = mean(media)) %>%
+  View()
+
 
 dygraph(incidenti_ts_mesili[, c(1, 5)]) %>% 
   dyAxis("y", label = "N. incidenti") %>%

@@ -262,7 +262,7 @@ incidenti@data %>%
   geom_text(aes(label = paste(round(percentuale, digits = 1), "%", sep = " ")), size = 3, hjust = -0.2) + #position = position_dodge(.9), 
   scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 10)) +
   ggtitle("Veicoli coinvolti nei sinistri con un velocipede") +
-  theme(legend.position = "none", axis.text.y = element_text(size = 12, face = "bold")) +
+  theme(legend.position = "none", axis.text.y = element_text(size = 12, face = "bold"), panel.background = element_rect(colour = "grey", fill = NA), panel.grid.major.x = element_line(colour = "lightgrey",linetype = "dotted"), plot.title = element_text(size = 13, face = "bold", hjust = 0)) +
   coord_flip() 
 
 ```
@@ -284,7 +284,7 @@ valueBox(value = str_c(summary_stats$media, " (", round(summary_stats$sd, digits
 valueBox(value = str_c(round(summary_stats$tasso, digits = 2), " (", round(summary_stats$lower_ci_tasso, digits = 2), "-",  round(summary_stats$upper_ci_tasso, digits = 2), ")", sep = ""), caption = "Tasso giornaliero di incidenti (95% CI)", color = "danger", icon = "fa-calendar")
 ```
 
-### Andamento {data-height=300}
+### Andamento {data-height=3   00}
 
 ```{r}
 incidenti@data %>% 
@@ -313,7 +313,7 @@ incidenti@data %>%
               summarise(tot = n()),
             inherit.aes = FALSE) +
   ggtitle("Frequenza dei sinistri per anno e tipo di veicolo coinvolto") +
-  theme(legend.position = "none")
+  theme(legend.position = "none", panel.background = element_rect(colour = "grey", fill = NA), panel.grid.major.y = element_line(colour = "lightgrey",linetype = "dotted"), plot.title = element_text(size = 13, face = "bold", hjust = 0))
 
 ```
 
@@ -376,10 +376,11 @@ incidenti@data %>%
   geom_text(aes(label = str_c(n, "\n(", round(percentuale, digits = 1), "%)", sep = "")), nudge_y = 17, size = 3) +
   ylab("Frequenza (n. incidenti)") +
   xlab("") + 
-  geom_text(aes(label = str_c(n, "  sinistri (", round(percentuale, digits = 1), "%)", " (", round(tasso, digits = 2), ")*"), x = c(5.5, 2.5), y = c(275, 275)), data = frequenze_giorni_tipo, inherit.aes = FALSE) + 
-  annotate("text", x = c(2.5, 5.5), y = c(300, 300), label = c("Giorni feriali", "Giorni festivi")) +
+  geom_text(aes(label = str_c(n, "  sinistri (", round(percentuale, digits = 1), "%)", " (", round(tasso, digits = 2), ")*"), x = c(6, 3), y = c(275, 275)), data = frequenze_giorni_tipo, inherit.aes = FALSE) + 
+  annotate("text", x = c(3, 6), y = c(300, 300), label = c("Giorni feriali", "Giorni festivi")) +
   # annotate("text", label = "* tasso giornaliero", x = 1.5, y = -25) +
-  labs(caption = "* tasso giornaliero") # +
+  labs(caption = "* tasso giornaliero") +
+  theme(panel.background = element_rect(colour = "grey", fill = NA), panel.grid.major.y = element_line(colour = "lightgrey",linetype = "dotted"), plot.title = element_text(size = 13, face = "bold", hjust = 0))
   #ggtitle("Frequenza degli incidenti durante la settimana")
 
 ```
@@ -426,17 +427,25 @@ Row {data-height=600}
 ### Frequenza dei sinistri per mese {data-width=600} 
 
 ```{r}
+temp_mensili <- incidenti_ts_mesili %>% 
+  bind_cols(mese = rep(levels(incidenti@data$MESE2), times = 4)) %>% #View()
+  mutate(mese = factor(mese, levels = mesi) ) %>% 
+  group_by(mese) %>%
+  summarise(media = mean(media))
+
 incidenti@data %>% 
   group_by(MESE2) %>% 
   summarise(n=n()) %>% 
   mutate(percentuale = n*100/sum(n)) %>% 
-  ggplot(aes(x=MESE2, y=n, group=1)) +
+  ggplot(aes(x=MESE2, y=n/4, group=1)) +
   geom_line(stat = "identity", colour = "blue", size = 1.5) +
+  geom_area(aes(x = mese, y = media), data = temp_mensili, fill = "green", alpha = .5) + 
   geom_text(aes(label = str_c(n, "\n(", round(percentuale, digits = 1), "%)", sep = "")), nudge_y = 8, size = 3) +
-  ylab("Frequenza (n. incidenti)") +
+  scale_y_continuous(sec.axis = dup_axis(name = "Temperatura media C°")) +
+  ylab("Frequenza media (n. incidenti)") +
   xlab("") + 
   ggtitle("Frequenza dei sinistri nei mesi dell'anno") +
-  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))
+  theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1), panel.background = element_rect(colour = "grey", fill = NA), panel.grid.major.y = element_line(colour = "lightgrey",linetype = "dotted"), plot.title = element_text(size = 13, face = "bold", hjust = 0))
 ```
 
 ### Commenti {data-width=300, .no-title}
@@ -492,3 +501,5 @@ dygraph(incidenti_ts_mesili[, 3:4]) %>%
 #   ggtitle("Frequenza dei sinistri nei mesi dell'anno") +
 #   theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1))
 ```
+
+> I dati meteo sono stati scaricati dal sito del [Servizio Idrogeologico della Regione Toscana](http://www.sir.toscana.it) ai seguenti indirizzi: [precipitazioni](http://www.sir.toscana.it/archivio/download.php?IDST=pluvio&IDS=TOS01001095), [temperature](http://www.sir.toscana.it/archivio/download.php?IDST=termo_csv&IDS=TOS11000111).
